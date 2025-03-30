@@ -3,6 +3,7 @@ use std::cmp::Ordering;
 use std::collections::LinkedList;
 use std::fmt::{Display, Formatter, Pointer};
 use crate::observations::Observation;
+use crate::value::Value;
 
 #[derive(Debug, Clone)]
 pub struct Node {
@@ -107,42 +108,55 @@ impl History {
     }
 }
 
-pub fn traverse_history(history: &mut History) {
+pub fn merge_procedure(capture: Vec<Node>) -> Option<Value> {
+    println!("{:?}", capture);
+    None
+}
+
+pub fn traverse_history(history: &mut History, initial_value: Option<Value>) -> Option<Value> {
     let mut capture: Vec<Node> = Vec::with_capacity(history.nodes.len());
 
     // Debug Printout:
-    for node in history.nodes.iter() {
-        print!("{}|", node.observation);
-    }
-    println!("");
-
+    // for node in history.nodes.iter() {
+    //     print!("{}|", node.observation);
+    // }
+    // println!("");
+    let mut accumulator: Option<Value> = initial_value;
     let mut opened = false;
+    let mut undefined_collection = vec![];
     for node in history.nodes.iter() {
         match node.n_incomparables {
             0 => {
                 if opened {
-                    for node in capture.iter() {
-                        print!("{} : {}|", node.name, node.observation);
+                    accumulator = merge_procedure(capture.clone());
+                    match accumulator {
+                        Some(_) => undefined_collection = vec![],
+                        None => undefined_collection.append(&mut capture),
                     }
-                    println!("Process: {}", History {
-                        nodes: LinkedList::from_iter(capture.clone().into_iter()),
-                    });
-                    capture.clear();
+                    capture = Vec::new();
                     opened = false;
                 }
 
-                println!("Process: {}", node.name)
+                accumulator = node.observation.definition_predicate.apply(accumulator);
+                match accumulator {
+                    Some(_) => undefined_collection = vec![],
+                    None => undefined_collection.push(node.clone()),
+                }
             },
             _ => {
                 if !opened {
-                    println!("Starting Capture!");
                     opened = true; // Just stops message from printing for every single one!
                 }
                 capture.push(node.clone())
             }
         }
     }
-    println!("Ended with {}", History {
-        nodes: LinkedList::from_iter(capture.clone().into_iter()),
-    });
+    if !capture.is_empty() {
+        accumulator = merge_procedure(capture);
+    }
+
+    if accumulator.is_none() {
+        println!("Last Undefined: {:?}", undefined_collection)
+    }
+    return accumulator
 }

@@ -1,14 +1,17 @@
 use std::time::Duration;
 use nexosim::model::{Context, Model};
+use nexosim::ports::{EventSlot, Output};
 use nexosim::simulation::ActionKey;
 use crate::messages;
 use crate::processing::{traverse_history, History, Node};
+use crate::value::Value;
 
 pub struct Interpreter {
     history: History,
     processing_delay: u64,
     observation_count: u64,
-    pending: bool
+    pending: bool,
+    pub(crate) found_out: Output<Option<Value>>
 }
 
 impl Interpreter {
@@ -18,11 +21,12 @@ impl Interpreter {
             processing_delay,
             observation_count: 0,
             pending: false,
+            found_out: Output::new(),
         }
     }
 
     pub(crate) async fn input(&mut self, observation: messages::Observation, ctx: &mut Context<Self>) {
-        self.history.add_node(Node::new(observation.observation, self.observation_count));
+        self.history.add_node(Node::new(observation.0, self.observation_count));
         self.observation_count+=1; // Monotonic Reference Name
         if !self.pending {
             ctx.schedule_event(Duration::from_millis(self.processing_delay), Self::process, ()).unwrap();
@@ -31,7 +35,10 @@ impl Interpreter {
     }
 
     async fn process(&mut self) {
-        traverse_history(&mut self.history);
+        self.found_out.send( traverse_history(&mut self.history, Some(10))).await;
+        // TODO:
+        // if conflict
+        // self.conflict_out write. - Stops simulation. Marks conflict time. Over.
         self.pending = false;
     }
 }

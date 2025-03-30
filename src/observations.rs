@@ -3,7 +3,7 @@ use std::fmt::{Display, Formatter};
 use nexosim::time::MonotonicTime;
 use crate::value::Value;
 use crate::intervals::{Interval, GT, LT};
-
+use crate::observations::DefinitionPredicate::Unknown;
 
 #[derive(Clone, Debug)]
 pub struct Observation {
@@ -17,8 +17,21 @@ pub struct Observation {
 pub enum DefinitionPredicate {
     Transition(Value, Value),
     AllMut(Value),
-    LastAssn(Value)
+    LastAssn(Value),
+    Unknown
 }
+
+impl DefinitionPredicate {
+    pub fn apply(&self, value: Option<Value>) -> Option<Value>{
+        match self {
+            DefinitionPredicate::Transition(s_0, s_1) if value.is_some_and(|v| &v == s_0) => Some(s_1.clone()),
+            DefinitionPredicate::AllMut(delta) if value.is_some() => Some(value.unwrap() + delta),
+            DefinitionPredicate::LastAssn(new) => Some(new.clone()),
+            _ => None
+        }
+    }
+}
+
 
 #[derive(Clone, Debug)]
 pub enum PlatformMetadata {
@@ -68,7 +81,8 @@ impl Display for Observation {
         write!(f, "{} {} @ {}, {}", match self.definition_predicate {
             DefinitionPredicate::AllMut(_) => "MU",
             DefinitionPredicate::Transition(_, _) => "TR",
-            DefinitionPredicate::LastAssn(_) => "AS"
+            DefinitionPredicate::LastAssn(_) => "AS",
+            DefinitionPredicate::Unknown => "UK"
         },
             self.source,
             self.interval.0.duration_since(MonotonicTime::EPOCH).as_millis(),
