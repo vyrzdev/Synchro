@@ -2,10 +2,10 @@ use std::cmp::max;
 use nexosim::model::{Context, InitializedModel, Model};
 use nexosim::ports::Output;
 use nexosim::time::MonotonicTime;
-use crate::messages;
-use crate::messages::{PollRequest, RecordReply, RecordRequest};
+use crate::simulation::messages;
+use crate::simulation::messages::{PollRequest, RecordReply, RecordRequest};
 use crate::observations::{DefinitionPredicate, Observation, PlatformMetadata};
-use crate::polling::WaitingPoll;
+use crate::simulation::polling::WaitingPoll;
 use chrono::{Duration, TimeDelta};
 
 pub struct DeviationSession {
@@ -50,7 +50,7 @@ impl RecordInterface {
                             logical_version: logical_timestamp
                         },
                     })).await;
-                    println!("Generating Events!");
+                    // println!("Generating Events!");
                 }
 
                 ctx.schedule_event(self.backoff, Self::query, ()).unwrap();

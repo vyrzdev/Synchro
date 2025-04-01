@@ -2,15 +2,16 @@ use std::time::Duration;
 use nexosim::model::{Context, InitializedModel, Model};
 use nexosim::ports::Output;
 use nexosim::time::MonotonicTime;
-use crate::messages;
-use crate::messages::{PollReply, PollRequest, Write};
+use crate::simulation::messages;
+use crate::simulation::messages::{PollReply, PollRequest, Write};
 use crate::observations::{Observation, PlatformMetadata};
 use crate::observations::DefinitionPredicate::{AllMut, LastAssn, Transition};
-use crate::polling::{CompletedPoll, PollingInterpretation, WaitingPoll, WaitingWrite};
-use crate::polling::safe_platform::SafePollingPlatform;
+use crate::simulation::polling::{CompletedPoll, PollingInterpretation, WaitingPoll, WaitingWrite};
 use crate::value::Value;
 
-pub struct SafePollingInterface {
+
+
+pub struct UnsafePollingInterface {
     interp: PollingInterpretation,
     pub(crate) request_output: Output<PollRequest>,
     pub(crate) observation_output: Output<messages::Observation>,
@@ -22,9 +23,9 @@ pub struct SafePollingInterface {
     poll_count: u64,
     name: String
 }
-impl SafePollingInterface {
-    pub fn new(name: String, backoff: Duration, interp: PollingInterpretation, initial: CompletedPoll) -> SafePollingInterface {
-        SafePollingInterface {
+impl UnsafePollingInterface {
+    pub fn new(name: String, backoff: Duration, interp: PollingInterpretation) -> UnsafePollingInterface {
+        UnsafePollingInterface {
             name,
             interp,
             request_output: Output::default(),
@@ -32,13 +33,14 @@ impl SafePollingInterface {
             backoff,
             current_poll: None,
             current_write: None,
-            last: Some(initial),
+            last: None,
             to_write: None,
             poll_count: 0
         }
     }
 
     pub fn write_input(&mut self, write: Option<Value>, ctx: &mut Context<Self>) {
+        // In unsafe-write mode; we write on receiving a poll, to minimise potential unsafe time*
         self.to_write = write;
     }
 
@@ -48,7 +50,7 @@ impl SafePollingInterface {
                 if self.last.as_ref().is_some_and(|last| last.value != value) {
                     // Generate Appropriate Observation.
                     self.observation_output.send(messages::Observation(
-                       Observation {
+                        Observation {
                             interval: (self.last.as_ref().unwrap().send, ctx.time()),
                             definition_predicate: match self.interp {
                                 PollingInterpretation::Transition => Transition(
@@ -87,7 +89,7 @@ impl SafePollingInterface {
                 match self.to_write.as_ref() {
                     Some(value) => {
                         // If we have a value to write... send it!
-                        self.request_output.send(PollRequest::SafeWrite(*value, self.last.as_ref().unwrap().value)).await;
+                        self.request_output.send(PollRequest::Write(*value)).await;
                         // And log send time, and value written
                         self.current_write = Some(WaitingWrite {
                             send: ctx.time(),
@@ -116,41 +118,7 @@ impl SafePollingInterface {
                 // Write is completed- Reschedule poll!
                 ctx.schedule_event(self.backoff, Self::poll, (ctx.time() + self.backoff)).unwrap();
             },
-            PollReply::WriteFailure(new_value) => {
-                // Generate new observation!
-                self.observation_output.send(messages::Observation(
-                    Observation {
-                        interval: (self.last.as_ref().unwrap().send, ctx.time()),
-                        definition_predicate: match self.interp {
-                            PollingInterpretation::Transition => Transition(
-                                self.last.as_ref().unwrap().value,
-                                new_value
-                            ),
-                            PollingInterpretation::AllMut => AllMut(
-                                new_value - self.last.as_ref().unwrap().value
-                            ),
-                            PollingInterpretation::LastAssn => LastAssn(
-                                new_value
-                            )
-                        },
-                        source: self.name.clone(),
-                        platform_metadata: PlatformMetadata::Polling {
-                            poll_count: self.poll_count
-                        },
-                    }
-                )).await;
-                self.poll_count += 1; // Monotonic ordering relation.
-                let current = self.current_write.as_ref().unwrap();
-                self.last = Some(CompletedPoll {
-                    send: current.send,
-                    receive: ctx.time(),
-                    value: new_value,
-                });
-                // Clear this write session (its complete)
-                self.current_write = None;
-                // Write is completed- Reschedule poll!
-                ctx.schedule_event(self.backoff, Self::poll, (ctx.time() + self.backoff)).unwrap();
-            }
+            PollReply::WriteFailure(_) => panic!("UNSAFE GOT WRITE FAILURE?")
         }
     }
 
@@ -159,7 +127,7 @@ impl SafePollingInterface {
         self.request_output.send(PollRequest::Query {}).await;
     }
 }
-impl Model for SafePollingInterface {
+impl Model for UnsafePollingInterface {
     async fn init(mut self, ctx: &mut Context<Self>) -> InitializedModel<Self> {
         self.poll(ctx.time()).await;
         self.into()

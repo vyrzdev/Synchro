@@ -4,7 +4,7 @@ use nexosim::model::{Context, InitializedModel, Model};
 use nexosim::ports::Output;
 use rand::Rng;
 use rand_distr::{Exp, Normal};
-use crate::messages::{PollReply, PollRequest};
+use crate::simulation::messages::{PollReply, PollRequest};
 use crate::observations::DefinitionPredicate;
 use crate::TruthRecord;
 use crate::value::Value;
@@ -35,7 +35,7 @@ impl SafePollingPlatform {
                 ctx.schedule_event(self.proc_delay(), Self::poll_reply, ()).unwrap()
             }
             PollRequest::SafeWrite(value, last) => {
-                println!("Got Write!");
+                // println!("Got Write!");
                 // When get write request- schedule write and subsequent reply.
                 ctx.schedule_event(self.proc_delay(), Self::write, (value, last)).unwrap()
             },
@@ -75,7 +75,8 @@ impl SafePollingPlatform {
         async move {
             /* implementation */
             self.current_value -= 1;
-            cx.schedule_event(self.sale_after(), Self::make_sale, (0)).unwrap();
+            let schedule_time = self.sale_after();
+            cx.schedule_event(self.sale_after(), Self::make_sale, (0)).expect(format!("ERORR REASON: {:?}", schedule_time).as_str());
             // Write to truth out.
             self.truth_output.send((DefinitionPredicate::AllMut(-1), cx.time())).await;
         }

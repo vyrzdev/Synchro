@@ -4,10 +4,10 @@ use nexosim::ports::Output;
 use nexosim::time::MonotonicTime;
 use rand::Rng;
 use rand_distr::{Exp, Normal};
-use crate::messages::{PollRequest, RecordReply, RecordRequest};
+use crate::simulation::messages::{PollRequest, RecordReply, RecordRequest};
 use crate::observations::DefinitionPredicate;
-use crate::polling::safe_platform::SafePollingPlatform;
-use crate::record::interface::RecordInterface;
+use crate::simulation::polling::safe_platform::SafePollingPlatform;
+use crate::simulation::record::interface::RecordInterface;
 use crate::TruthRecord;
 
 pub struct RecordPlatform {

@@ -1,0 +1,45 @@
+use std::cmp::Ordering;
+use crate::observations::Observation;
+use crate::simulation::data::SimulationMetaData;
+use crate::square::square::SquareMetadata;
+
+#[derive(Clone, Debug)]
+pub enum PlatformMetadata {
+    Square(SquareMetadata), // Square Logical Ordering
+    Simulation(SimulationMetaData) // Simulation Logical Ordering
+}
+
+impl PartialEq<Self> for PlatformMetadata {
+    fn eq(&self, other: &Self) -> bool {
+        false // Events are unique!
+    }
+}
+
+impl PartialOrd for PlatformMetadata {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match (self, other) {
+            // When platforms are both square, defer to square ordering.
+            (PlatformMetadata::Square(a), PlatformMetadata::Square(b)) => a.partial_cmp(b),
+            // When platforms are both simulation, defer to simulation ordering.
+            (PlatformMetadata::Simulation(a), PlatformMetadata::Simulation(b)) => a.partial_cmp(b),
+            _ => None // Platforms cannot be ordered.
+        }
+        // NOTE: Data typing only, we check if a.source==b.source before trusting this ordering.
+    }
+}
+
+impl<T> PartialEq for Observation<T> {
+    fn eq(&self, other: &Self) -> bool {
+        false // Observations are UNIQUE.
+    }
+}
+
+impl<T> PartialOrd for Observation<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match self.interval.partial_cmp(&other.interval) {
+            // If intervals overlap, but from same replica, check source logical ordering.
+            None if self.source == other.source => self.platform_metadata.partial_cmp(&other.platform_metadata),
+            (x) => x // Otherwise, return interval ordering.
+        }
+    }
+}

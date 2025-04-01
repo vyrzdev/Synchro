@@ -3,7 +3,7 @@ use nexosim::model::{Context, InitializedModel, Model};
 use nexosim::ports::Output;
 use rand::Rng;
 use rand_distr::{Exp, Normal};
-use crate::messages::{PollReply, PollRequest};
+use crate::simulation::messages::{PollReply, PollRequest};
 use crate::observations::DefinitionPredicate;
 use crate::TruthRecord;
 use crate::value::Value;
