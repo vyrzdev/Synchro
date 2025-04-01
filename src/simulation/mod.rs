@@ -7,8 +7,8 @@ use polling::safe_interface::SafePollingInterface;
 use polling::safe_platform::SafePollingPlatform;
 use record::interface::RecordInterface;
 use record::platform::RecordPlatform;
+use crate::predicates::DefinitionPredicate;
 use crate::simulation::polling::PollingInterpretation;
-use crate::TruthRecord;
 use crate::value::Value;
 
 pub mod data;
@@ -17,6 +17,74 @@ pub mod record;
 pub mod network;
 pub mod messages;
 mod interpreter;
+
+pub type TruthRecord = (DefinitionPredicate, MonotonicTime);
+
+fn simulate() {
+    let mut conflict_times = Vec::new();
+    let iterations = 50;
+    let mut diverge_times = Vec::new();
+    let mut iteration = 0;
+    'conflict: loop {
+        let mut truth_sink = EventBuffer::new();
+        let mut found_slot = EventSlot::new();
+        let mut simu = build_model(&truth_sink, &found_slot);
+
+        if iteration > iterations {
+            break 'conflict;
+        }
+
+        // Setup Simulator
+        let mut true_value = 10;
+        let mut observed_value = 10;
+        let mut diverged_at = None;
+        loop {
+            simu.step().unwrap();
+
+            for (event, _) in &mut truth_sink {
+                true_value = event.apply(Some(true_value)).unwrap()
+            }
+
+            match found_slot.next() {
+                None => {} // Do nothing as no new found pushed.
+                Some(v) => match v {
+                    Some(v) => {
+                        // Value observed- use.
+                        observed_value = v;
+                    },
+                    None => {
+                        println!("Conflict!");
+                        conflict_times.push(simu.time());
+                        break // Conflict! Stop Simulation.
+                    }
+                }
+            }
+
+            if (observed_value != true_value) && diverged_at.is_none() {
+                // println!("Diverged At: {}", simu.time());
+                diverged_at = Some(simu.time())
+            }
+
+            if diverged_at.is_some() && observed_value == true_value {
+                diverge_times.push(simu.time().duration_since(diverged_at.unwrap()));
+                diverged_at = None;
+            }
+
+            if diverged_at.is_some_and(|diverged_at| simu.time().duration_since(diverged_at) > Duration::from_millis(100000)) {
+                println!("Diverged At: {}", diverged_at.unwrap());
+                break 'conflict; // Note divergence!
+            }
+            if simu.time() >= MonotonicTime::new(86400, 0).unwrap() {
+                println!("Complete");
+                break; // We are complete!
+            }
+        }
+        iteration += 1;
+    }
+
+    println!("Conflicts: {:?}", conflict_times);
+    println!("Divergence: {:?}", diverge_times.iter().map(|x| x.as_millis()).sum::<u128>()/diverge_times.len() as u128);
+}
 
 fn build_model(truth_sink: &EventBuffer<TruthRecord>, found_slot: &EventSlot<Option<Value>>) -> Simulation {
     let mut network1_connection = NetworkConnection::new(10.0, 4.0);
