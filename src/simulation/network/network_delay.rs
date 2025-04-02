@@ -1,12 +1,15 @@
 use std::time::Duration;
 use nexosim::model::{Context, Model};
-use nexosim::ports::{EventSlot, Output};
-use nexosim::simulation::{Mailbox, SimInit, SimulationError};
-use nexosim::time::MonotonicTime;
-use rand::distr::Distribution;
+use nexosim::ports::{Output};
 use rand::Rng;
-use rand::rngs::ThreadRng;
 use rand_distr::Pareto;
+
+#[derive(Clone, Debug)]
+pub struct NetworkParameters {
+    pub(crate) size: f64, // Avg milliseconds one-way RTT.
+    pub(crate) scale: f64 // Scale of Pareto - Larger = less extremes.
+}
+
 
 pub struct NetworkConnection<MessageType1: Clone + Send + Sync + 'static, MessageType2:  Clone + Send + Sync + 'static> {
     pub output_1: Output<MessageType1>,
@@ -14,11 +17,12 @@ pub struct NetworkConnection<MessageType1: Clone + Send + Sync + 'static, Messag
     distribution: Pareto<f64>,
 }
 impl<MessageType1: Clone + Send + Sync + 'static, MessageType2: Clone + Send + Sync + 'static> NetworkConnection<MessageType1, MessageType2> {
-    pub fn new(avg_rtt: f64, shape: f64) -> Self {
+    pub fn new(network_parameters: NetworkParameters) -> Self {
         NetworkConnection {
             output_1: Output::default(),
             output_2: Output::default(),
-            distribution: Pareto::new(avg_rtt, shape).unwrap(), // Pareto Distribution- as per: http://blog.simiacryptus.com/posts/modeling_network_latency/
+            // Pareto Distribution- as per: http://blog.simiacryptus.com/posts/modeling_network_latency/
+            distribution: Pareto::new(network_parameters.size, network_parameters.scale).unwrap()
         }
     }
 
@@ -42,9 +46,7 @@ impl<MessageType1: Clone + Send + Sync + 'static, MessageType2: Clone + Send + S
 
     pub fn delay(&mut self) -> Duration {
         let net_delay = Duration::from_millis(rand::rng().sample(self.distribution).round() as u64);
-        if net_delay.as_millis() > 300 {
-            println!("LongAssDelay: {}", net_delay.as_millis());
-        }
+        // println!("Delay: {net_delay:?}");
         net_delay
     }
 }

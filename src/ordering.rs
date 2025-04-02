@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 use crate::observations::Observation;
 use crate::simulation::data::SimulationMetaData;
-use crate::square::square::SquareMetadata;
+use crate::real_world::square::SquareMetadata;
 
 #[derive(Clone, Debug)]
 pub enum PlatformMetadata {
@@ -19,22 +19,28 @@ impl PartialOrd for PlatformMetadata {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         match (self, other) {
             // When platforms are both square, defer to square ordering.
-            (PlatformMetadata::Square(a), PlatformMetadata::Square(b)) => a.partial_cmp(b),
+            (PlatformMetadata::Square(a), PlatformMetadata::Square(b)) => match a.partial_cmp(b) {
+                Some(Ordering::Equal) => None,
+                x => x
+            },
             // When platforms are both simulation, defer to simulation ordering.
-            (PlatformMetadata::Simulation(a), PlatformMetadata::Simulation(b)) => a.partial_cmp(b),
+            (PlatformMetadata::Simulation(a), PlatformMetadata::Simulation(b)) => match a.partial_cmp(b) {
+                Some(Ordering::Equal) => None,
+                x => x
+            },
             _ => None // Platforms cannot be ordered.
         }
         // NOTE: Data typing only, we check if a.source==b.source before trusting this ordering.
     }
 }
 
-impl<T> PartialEq for Observation<T> {
+impl<T: PartialOrd + Clone> PartialEq for Observation<T> {
     fn eq(&self, other: &Self) -> bool {
         false // Observations are UNIQUE.
     }
 }
 
-impl<T> PartialOrd for Observation<T> {
+impl<T: PartialOrd + Clone> PartialOrd for Observation<T> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         match self.interval.partial_cmp(&other.interval) {
             // If intervals overlap, but from same replica, check source logical ordering.

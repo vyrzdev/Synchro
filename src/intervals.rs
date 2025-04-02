@@ -2,7 +2,8 @@ use std::cmp::Ordering;
 use chrono::{DateTime, Utc};
 use nexosim::time::MonotonicTime;
 
-pub struct Interval<T>(pub T, pub T); // Generic Interval Type.
+#[derive(Debug, Copy, Clone)]
+pub struct Interval<T: PartialOrd>(pub T, pub T); // Generic Interval Type.
 
 impl<T: PartialOrd> PartialEq for Interval<T> {
     fn eq(&self, _other: &Self) -> bool {

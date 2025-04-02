@@ -1,26 +1,25 @@
-use core::num::fmt::Part;
 use std::cmp::Ordering;
 use crate::observations::Observation;
 use crate::predicates::DefinitionPredicate;
 use crate::value::Value;
 
 #[derive(Debug)]
-pub struct Region<T> {
-    observations: Vec<Observation<T>>,
+pub struct Region<T: PartialOrd + Clone> {
+    pub(crate) observations: Vec<Observation<T>>,
     cached_definition: Option<DefinitionPredicate>
 }
 
-impl<T> PartialEq for Region<T> {
+impl<T: PartialOrd + Clone> PartialEq for Region<T> {
     fn eq(&self, _: &Self) -> bool {
         false // Regions are unique!
     }
 }
 
-impl<T> Region<T> {
+impl<T: PartialOrd + Clone> Region<T> {
     pub(crate) fn new(obs: Observation<T>) -> Region<T> {
         Region {
-            observations: vec![obs],
-            cached_definition: Some(obs.definition_predicate.clone())
+            observations: vec![obs.clone()],
+            cached_definition: Some(obs.definition_predicate)
         }
     }
 
@@ -45,7 +44,7 @@ impl<T> Region<T> {
         }
     }
 
-    pub(crate) fn compare_with_observation(&self, obs: &Self) -> Option<Ordering> {
+    pub(crate) fn compare_with_observation(&self, obs: &Observation<T>) -> Option<Ordering> {
         let mut less_than_comparable = true; // True until proven otherwise
         let mut greater_than_comparable = true; // ditto.
         let mut incomparable_with_some = false; // False until seen.

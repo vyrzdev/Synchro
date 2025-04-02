@@ -1,36 +1,23 @@
-use nexosim::time::MonotonicTime;
-use crate::observations;
-use crate::observations::DefinitionPredicate;
+use crate::simulation::polling::r#unsafe::messages::UnsafePollQuery;
+use crate::simulation::polling::safe::messages::SafePollQuery;
+use crate::simulation::record::messages::RecordQuery;
 use crate::value::Value;
 
-#[derive(Clone)]
-pub enum PollRequest {
-    Query,
-    Write(Value),
-    SafeWrite(Value, Value)
+#[derive(Debug, Clone)]
+pub enum PlatformQuery {
+    User(UserAction),
+    Interface(InterfaceQuery)
 }
 
-#[derive(Clone)]
-pub enum PollReply {
-    Query(Value),
-    WriteComplete,
-    WriteFailure(Value)
-}
-#[derive(Clone)]
-pub struct Observation(pub observations::Observation);
-#[derive(Clone)]
-pub struct Write {
-    pub(crate) value: Value
-}
-#[derive(Clone)]
-pub enum RecordRequest {
-    Deviation,
-    Query
-}
-#[derive(Clone)]
-pub enum RecordReply {
-    Query(Vec<(DefinitionPredicate, MonotonicTime, u64)>),
-    Deviation(MonotonicTime)
+#[derive(Clone, Copy, Debug)]
+pub enum UserAction {
+    Mutation(Value),
+    Assignment(Value)
 }
 
-
+#[derive(Debug, Clone)]
+pub enum InterfaceQuery {
+    PollingSafe(SafePollQuery),
+    PollingUnsafe(UnsafePollQuery),
+    Record(RecordQuery)
+}

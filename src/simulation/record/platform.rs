@@ -1,92 +1,81 @@
 use std::time::Duration;
-use nexosim::model::{Context, InitializedModel, Model};
+use nexosim::model::{Context, Model};
 use nexosim::ports::Output;
 use nexosim::time::MonotonicTime;
-use rand::Rng;
-use rand_distr::{Exp, Normal};
-use crate::simulation::messages::{PollRequest, RecordReply, RecordRequest};
-use crate::observations::DefinitionPredicate;
-use crate::simulation::polling::safe_platform::SafePollingPlatform;
-use crate::simulation::record::interface::RecordInterface;
-use crate::TruthRecord;
+use chrono::TimeDelta;
+use crate::predicates::DefinitionPredicate;
+use crate::simulation::driver::TruthRecord;
+use crate::simulation::messages::{InterfaceQuery, PlatformQuery, UserAction};
+use crate::simulation::record::messages::{RecordQuery, RecordReply};
 
-pub struct RecordPlatform {
-    events_since: Vec<(DefinitionPredicate, MonotonicTime, u64)>,
-    deviation_distribution: Normal<f64>,
-    processing_distribution: Normal<f64>,
-    sale_distribution: Exp<f64>,
-    pub(crate) output: Output<RecordReply>,
-    pub(crate) truth_output: Output<TruthRecord>,
-    logical_version: u64
+#[derive(Clone, Debug)]
+pub struct RecordPlatformParameters {
+    pub(crate) deviation: TimeDelta,
 }
 
+
+// Simple event record- outputs definition, time, and logical version.
+pub type Event = (DefinitionPredicate, MonotonicTime, u64);
+pub struct RecordPlatform {
+    name: String,
+    logical_version: u64,
+    events_since: Vec<Event>,
+    config: RecordPlatformParameters,
+    pub(crate) reply_output: Output<RecordReply>,
+    pub(crate) truth_output: Output<TruthRecord>,
+}
 
 impl RecordPlatform {
-    pub fn new(deviation: f64, std_dev: f64, avg_proc: f64, hourly_sales: f64) -> Self {
+    pub fn new(name: String, config: RecordPlatformParameters) -> RecordPlatform {
         RecordPlatform {
+            name,
+            logical_version: 0,
             events_since: vec![],
-            processing_distribution: Normal::new(avg_proc, 1.0).unwrap(), // Processing time is normally distributed.
-            deviation_distribution: Normal::new(deviation, std_dev).unwrap(), // We assume deviation is normally distributed.
-            sale_distribution: Exp::new(hourly_sales/60.0/60.0/1000.0).unwrap(), // Sales are Exponential Distributed (avg lambda)            output: Default::default(),
-            output: Default::default(),
-            truth_output: Default::default(),
-            logical_version: 0
+            config,
+            reply_output: Output::default(),
+            truth_output: Output::default(),
         }
     }
 
-    pub fn input(&mut self, request: RecordRequest, ctx: &mut Context<Self>) {
-        // No need to model writes- as have NO EFFECT on records!
-        match request {
-            RecordRequest::Query => {
-                ctx.schedule_event(self.proc_delay(), Self::query_reply, ()).unwrap();
+    pub async fn input(&mut self, query: PlatformQuery, ctx: &mut Context<Self>) {
+        match query {
+            PlatformQuery::User(user_action) => match user_action {
+                UserAction::Mutation(delta) => {
+                    self.events_since.push(
+                        (DefinitionPredicate::AllMut(delta), self.deviate_time(ctx.time()), self.logical_version)
+                    );
+                    self.truth_output.send((DefinitionPredicate::AllMut(delta), ctx.time())).await;
+                    self.logical_version += 1;
+                },
+                UserAction::Assignment(new) => {
+                    self.events_since.push(
+                        (DefinitionPredicate::LastAssn(new), self.deviate_time(ctx.time()), self.logical_version)
+                    );
+                    self.truth_output.send((DefinitionPredicate::LastAssn(new), ctx.time())).await;
+                    self.logical_version += 1;
+                }
             },
-            RecordRequest::Deviation => {
-                let proc_delay = self.proc_delay();
-                let returned_clock = self.get_deviated_clock(ctx.time() + proc_delay);
-                ctx.schedule_event(self.proc_delay(), Self::deviation_reply, (returned_clock)).unwrap();
-            }
+            PlatformQuery::Interface(InterfaceQuery::Record(record_query)) => match record_query {
+                RecordQuery::Query => {
+                    self.reply_output.send(RecordReply::Query(self.events_since.clone())).await;
+                    self.events_since = Vec::with_capacity(self.events_since.len());
+                },
+                RecordQuery::Deviation => {
+                    // Send reply with deviation applied.
+                    self.reply_output.send(RecordReply::Deviation(self.deviate_time(ctx.time()))).await;
+                }
+            },
+            x => panic!("Unexpected query type! {x:#?}")
         }
     }
 
-    pub async fn query_reply(&mut self) {
-        self.output.send(RecordReply::Query(self.events_since.clone())).await;
-        self.events_since = Vec::new();
+    pub fn deviate_time(&self, time: MonotonicTime) -> MonotonicTime {
+        // Note- Hacky, we have to use Chrono for negative deviations.
+        MonotonicTime::from_chrono_date_time(&(
+            time.to_chrono_date_time(0).unwrap() + self.config.deviation
+        ), 0)
     }
 
-    pub async fn deviation_reply(&mut self, returned_clock: MonotonicTime) {
-        self.output.send(RecordReply::Deviation(returned_clock)).await;
-    }
-    pub fn proc_delay(&self) -> Duration {
-        Duration::from_millis(rand::rng().sample(self.processing_distribution).round() as u64)
-    }
-
-    pub fn sale_after(&self) -> Duration {
-        Duration::from_millis(rand::rng().sample(self.sale_distribution).round() as u64)
-    }
-
-    pub fn get_deviated_clock(&mut self, now: MonotonicTime) -> MonotonicTime {
-        now + Duration::from_millis(rand::rng().sample(self.deviation_distribution).round() as u64)
-    }
-    fn make_sale<'a>(
-        &'a mut self,
-        arg: u64,
-        cx: &'a mut Context<Self>
-    ) -> impl Future<Output=()> + Send + 'a {
-        async move {
-            /* implementation */
-            let deviated = self.get_deviated_clock(cx.time());
-            self.truth_output.send((DefinitionPredicate::AllMut(-1), cx.time())).await;
-            self.events_since.push((DefinitionPredicate::AllMut(-1), deviated, self.logical_version));
-            cx.schedule_event(self.sale_after(), Self::make_sale, (0)).unwrap();
-            self.logical_version += 1;
-        }
-    }
 }
 
-impl Model for RecordPlatform {
-    async fn init(self, ctx: &mut Context<Self>) -> InitializedModel<Self> {
-        // Give time for deviation estimation.
-        ctx.schedule_event(Duration::from_millis(1000) + self.sale_after(), Self::make_sale, (0)).unwrap();
-        self.into()
-    }
-}
+impl Model for RecordPlatform {}

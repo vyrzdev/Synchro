@@ -1,4 +1,4 @@
-#![feature(linked_list_cursors)]
+
 use std::cmp::Ordering;
 use std::thread::current;
 use crate::interpreter::history::History;
@@ -6,7 +6,7 @@ use crate::interpreter::regions::Region;
 use crate::observations::Observation;
 
 
-impl<T> History<T> {
+impl<T: PartialOrd + Clone> History<T> {
     // Insertion Automata
     pub fn insert(&mut self, observation: Observation<T>) {
         let mut cursor = self.0.cursor_front_mut();
@@ -19,9 +19,8 @@ impl<T> History<T> {
                             .is_none() // Is unorderable against the current observation.
                     ){
                         // Then enter Merge-Mode!
-                        let merge_into = cursor.current().unwrap(); // Save ref to current.
-                        cursor.move_next(); // Move to R_i+1
-                        for element in cursor.remove_current().unwrap() { // Remove R_{i+1} (moves cursor to i+2)
+                        let mut merge_into = cursor.remove_current().unwrap(); // Save current region. (and moves to R_{i+1})
+                        for element in cursor.remove_current().unwrap().observations { // Remove R_{i+1} (moves cursor to i+2)
                             merge_into.insert(element) // Take all of R_i+1, we already know it's unorderable.
                         }
                         // Greedily consume until end or less!
@@ -33,7 +32,7 @@ impl<T> History<T> {
                                     Some(Ordering::Equal) => unreachable!(),
                                     _ => {
                                         // Otherwise, keep capturing!
-                                        for element in cursor.remove_current().unwrap() {
+                                        for element in cursor.remove_current().unwrap().observations {
                                             merge_into.insert(element);
                                         }
                                     }

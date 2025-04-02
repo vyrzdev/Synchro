@@ -1,43 +1,41 @@
-use std::time::Duration;
+use log::debug;
 use nexosim::model::{Context, Model};
 use nexosim::ports::{EventSlot, Output};
+use tai_time::MonotonicTime;
+use crate::interpreter::error::ConflictError;
+use crate::interpreter::history::History;
+use crate::observations::Observation;
 use crate::value::Value;
 
+pub struct InterpreterConfig {
+    pub(crate) initial_value: Value
+}
+
 pub struct Interpreter {
-    history: History,
-    processing_delay: u64,
-    observation_count: u64,
-    pending: bool,
-    pub(crate) found_out: Output<Option<Value>>
+    history: History<MonotonicTime>,
+    config: InterpreterConfig,
+    pub(crate) found_out: Output<Result<Value, ConflictError<MonotonicTime>>>
 }
 
 impl Interpreter {
-    pub fn new(processing_delay: u64) -> Self {
+    pub fn new(config: InterpreterConfig) -> Self {
         Interpreter {
             history: History::new(),
-            processing_delay,
-            observation_count: 0,
-            pending: false,
-            found_out: Output::new(),
+            found_out: Default::default(),
+            config
         }
     }
 
-    // pub(crate) async fn input(&mut self, observation: messages::Observation, ctx: &mut Context<Self>) {
-    //     self.history.add_node(Node::new(observation.0, self.observation_count));
-    //     self.observation_count+=1; // Monotonic Reference Name
-    //     if !self.pending {
-    //         ctx.schedule_event(Duration::from_millis(self.processing_delay), Self::process, ()).unwrap();
-    //         self.pending = true;
-    //     }
-    // }
+    // TODO: Requestor/buffered port here to improve simulation speed.
+    pub (crate) async fn input(&mut self, observation: Observation<MonotonicTime>, ctx: &mut Context<Self>) {
+        debug!("Observed {:?} at {}", observation, ctx.time());
 
-    // async fn process(&mut self) {
-    //     self.found_out.send( traverse_history(&mut self.history, Some(10))).await;
-    //     // TODO:
-    //     // if conflict
-    //     // self.conflict_out write. - Stops simulation. Marks conflict time. Over.
-    //     self.pending = false;
-    // }
+
+        self.history.insert(observation);
+
+        // Send the result of history applied to initial value.
+        self.found_out.send(self.history.apply(Some(self.config.initial_value), ctx.time())).await;
+    }
 }
 
 
