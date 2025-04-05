@@ -2,17 +2,17 @@
 A simulator and real world demonstration of best-effort consistency between sovereign systems designed for Multi-Channel E-Commerce.
 
 ## Installation
-The project is written in Rust- as of right now you must build it from source.
-You can install rust using [rustup](rustup.rs)
-
-We use nightly features (mutable linked list cursors), so you must switch to the nightly branch.
-`rustup default nightly`
-
-From here- you can build the project by cd'ing into the Cargo.toml directory and running:
-`cargo build`
-
-The binary will (likely) be located in:
-`target/debug`
+The project is written in Rust- as of right now you must build it from source.\
+You can install rust using [rustup](rustup.rs)\
+<br>
+We use nightly features (mutable linked list cursors), so you must switch to the nightly branch.\
+`rustup default nightly`\
+<br>
+From here- you can build the project by cd'ing into the Cargo.toml directory and running:\
+`cargo build`\
+<br>
+The binary will (likely) be located in:\
+`target/debug`\
 
 ## Usage
 Syncho has both a simulation, and real-world mode. Each is configured differently.
