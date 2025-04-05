@@ -25,7 +25,8 @@ To run the real-world mode:\
 *note* to run the real-world mode, you must have a square developer account- see the attached [start guide](...)\
 <br>
 ## Configuration
-Here is an example simulation config:
+### Simulation
+Here is an example simulation config- we include many test configs in `/scenarios`
 ```json
 {
   "Simulation": [{
@@ -67,3 +68,38 @@ Here is an example simulation config:
     }
   ]}
 ```
+
+### Real World
+Here is an example real-world config. You will need to fill in these details with your own account:
+```json
+{
+  "RealWorld": {
+    "initial_value": 100,
+    "platforms": [
+      ["VendorA", {
+        "Records": {
+          "token": "...", // OAuth Access Token (Developer Console)
+          "backoff": {
+            "secs": 0,
+            "nanos": 200000000 // Time between queries (Avoid rate limits)
+          },
+          "target": ["LH1G24AYK9WJT", "52HQGXFQZWQQ7AITOUFWFW3C"], // Location ID, Catalog Object ID - the product to sync
+          "calibration_target": ["LH1G24AYK9WJT", "HUXUOSBQC4HS3DDPHEH3RTXP"] // Ditto- sacrificial product for deviation calculations.
+        }
+      }],
+      ["VendorB", {
+        "Polling": {
+          "token":"...",
+          "backoff": {
+            "secs": 0,
+            "nanos": 200000000
+          },
+          "target": ["L0ZSXYY4THT9D", "F5FDIG3YCSZQXEXIRRLZLI6M"],
+          "interpretation": "..." // How to interpret polls- Transition, Mutation, or Assignment
+        }
+      }]
+    ]
+  }
+}
+```
+
