@@ -110,6 +110,6 @@ The structure of the project is as follows:
 - `scenarios`: Various simulation configurations to explore.
 - `src`: Start logic, and common logic between all system components.
 
-*Note:* While this branch was started a couple weeks ago- there were many prior experiments and implementations. 
+*Note:* While this branch was started a couple weeks ago- there were many prior experiments and implementations.\
 I include these as partial artifacts for reference in the `archive` directory.
 
