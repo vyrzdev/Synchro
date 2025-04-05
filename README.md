@@ -3,7 +3,7 @@ A simulator and real world demonstration of best-effort consistency between sove
 
 ## Installation
 The project is written in Rust- as of right now you must build it from source.\
-You can install rust using [rustup](rustup.rs)\
+You can install Rust through [rustup](rustup.rs).\
 <br>
 We use nightly features (mutable linked list cursors), so you must switch to the nightly branch.\
 `rustup default nightly`\
@@ -13,13 +13,57 @@ From here- you can build the project by cd'ing into the Cargo.toml directory and
 <br>
 The binary will (likely) be located in:\
 `target/debug`\
-
+<br>
 ## Usage
-Syncho has both a simulation, and real-world mode. Each is configured differently.
-To run simulations:
-`synchro simulate <simulation_config>`
-You can also supply a directory with many simulation configurations, in which case all will be run sequentially.
-
-To run the real-world mode:
-`synchro run <real_world_config>`
-*note* to run the real-world mode, you must have a square developer account- see the attached [start guide](...)
+Syncho has both a simulation, and real-world mode. Each is configured differently.\
+To run simulations:\
+`synchro simulate <simulation_config>`\
+You can also supply a directory with many simulation configurations, in which case all will be run sequentially.\
+<br>
+To run the real-world mode:\
+`synchro run <real_world_config>`\
+*note* to run the real-world mode, you must have a square developer account- see the attached [start guide](...)\
+<br>
+## Configuration
+Here is an example simulation config:
+```json
+{
+  "Simulation": [{
+      "until": 100000, // Run Simulation Until (in seconds)
+      "initial_value": 100, // Start with value
+      "max_divergence_before_error": {
+        "secs": 100,
+        "nanos": 0
+      },
+      "platforms": {
+        "Polling2": { // Name (String ID)
+          "PollingSafe": { // Model (Record, PollingSafe, PollingUnsafe)
+            "initial_value": 100,
+            "network_params": {
+              "size": 20.0, // Network latency average (PER DIRECTION)
+              "scale":4.0 // Stability (lower == UNSTABLE)
+            },
+            "interface_params": {
+              "interp": "Transition", // Poll Interpretation
+              "backoff": {
+                "secs": 0,
+                "nanos": 200000000 // Time between polls.
+              }
+            },
+            "user_params": {
+              "until": 100000, // Do sales until (in seconds)
+              "average_sales_per_hour": 5.0,
+              "average_edits_per_day": 1.0,
+              "edit_to": 100,
+              "start_after": { // Start sales after <deviation backoff>
+                "secs": 2,
+                "nanos": 0
+              }
+            }
+          }
+        },
+        ... Further Platforms
+      }
+    }
+  ]}
+```
