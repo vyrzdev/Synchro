@@ -1,0 +1,95 @@
+{
+  "Simulation": [
+    {
+      "until": 100000,
+      "initial_value": 100,
+      "max_divergence_before_error": {
+        "secs": 5,
+        "nanos": 0
+      },
+      "platforms": {
+        "Polling2": {
+          "PollingSafe": {
+            "initial_value": 100,
+            "network_params": {
+              "size": 20.0,
+              "scale":4.0
+            },
+            "interface_params": {
+              "interp": "AllMut",
+              "backoff": {
+                "secs": 0,
+                "nanos": 200000000
+              }
+            },
+            "user_params": {
+              "until": 100000,
+              "average_sales_per_hour": 100.0,
+              "average_edits_per_day": 0.0,
+              "edit_to": 100,
+              "start_after": {
+                "secs": 2,
+                "nanos": 0
+              }
+            }
+          }
+        },
+        "Polling1": {
+          "PollingSafe": {
+            "initial_value": 100,
+            "network_params": {
+              "size": 20.0,
+              "scale":4.0
+            },
+            "interface_params": {
+              "interp": "AllMut",
+              "backoff": {
+                "secs": 0,
+                "nanos": 200000000
+              }
+            },
+            "user_params": {
+              "until": 100000,
+              "average_sales_per_hour": 100.0,
+              "average_edits_per_day": 0.0,
+              "edit_to": 100,
+              "start_after": {
+                "secs": 2,
+                "nanos": 0
+              }
+            }
+          }
+        },
+        "Record1": {
+          "Record": {
+            "network_params": {
+              "size": 20.0,
+              "scale":4.0
+            },
+            "interface_params": {
+              "backoff": {
+                "secs": 0,
+                "nanos": 200000000
+              }
+            },
+            "platform_params": {
+              "deviation": [
+                -1,
+                600000000
+              ]
+            },
+            "user_params": {
+              "until": 100000,
+              "average_sales_per_hour": 100.0,
+              "average_edits_per_day": 5.0,
+              "edit_to": 100,
+              "start_after": {
+                "secs": 2,
+                "nanos": 0
+              }
+            }
+            }
+          }
+        }
+      }
+  ]}

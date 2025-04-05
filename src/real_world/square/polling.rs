@@ -1,10 +1,10 @@
-use std::collections::HashSet;
 use std::env;
 use std::str::FromStr;
-use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::sync::mpsc::{Sender};
 use std::time::Duration;
 use chrono::{DateTime, Utc};
 use log::{error, warn};
+use serde::{Deserialize, Serialize};
 use squareup::api::{CatalogApi, InventoryApi};
 use squareup::config::{BaseUri, Configuration, Environment};
 use squareup::http::client::HttpClientConfiguration;
@@ -19,18 +19,18 @@ use crate::observations::Observation;
 use crate::ordering::PlatformMetadata;
 use crate::predicates::DefinitionPredicate;
 use squareup::models::DateTime as SquareDateTime;
-use tokio::sync::mpsc::error::TryRecvError;
+use tokio::sync::watch;
 use crate::real_world::square::{SquareMetadata, Target, IGNORE};
-use crate::simulation::record::RecordConfig;
 use crate::value::Value;
 
-#[derive(PartialEq, Copy, Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum PollingInterpretation {
     Transition,
     Mutation,
     Assignment
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SquarePollingConfig {
     pub(crate) token: String,
     backoff: Duration,
@@ -68,42 +68,37 @@ impl SquarePollingInterface {
 
         return SquarePollingInterface { name, catalog_api, inventory_api, config};
     }
-    pub async fn poll_worker(&mut self, mut to_write: Receiver<Value>, observation_out: Sender<Observation<DateTime<Utc>>>, initial_poll: (DateTime<Utc>, Value)) -> ! {
+    pub async fn poll_worker(&mut self, mut to_write: watch::Receiver<Option<Value>>, observation_out: Sender<Observation<DateTime<Utc>>>, initial_poll: (DateTime<Utc>, Value)) -> ! {
         let (mut last_sent, mut last_value) = initial_poll;
 
         loop {
             let (value, sent, replied) = self.request(self.config.target.clone()).await;
-            if (value != last_value) {
+            if value != last_value {
                 // Generate Observation!
                 observation_out.send(Observation {
                     interval: Interval(last_sent, replied),
                     definition_predicate: match &self.config.interpretation {
                         PollingInterpretation::Transition => DefinitionPredicate::Transition(last_value, value),
-                        PollingInterpretation::Mutation => DefinitionPredicate::AllMut((value - last_value)),
+                        PollingInterpretation::Mutation => DefinitionPredicate::AllMut(value - last_value),
                         PollingInterpretation::Assignment => DefinitionPredicate::LastAssn(value),
                     },
                     source: self.name.clone(),
                     platform_metadata: PlatformMetadata::Square(SquareMetadata {
                         timestamp: sent // Use poll sent times as logical ordering.
                     }),
-                }).unwrap();
+                }).await.unwrap();
             }
 
-            match to_write.try_recv() {
+            if to_write.has_changed().unwrap() {
+                to_write.mark_unchanged();
                 // If some value waiting to write.
-                Ok(to_write) => {
-                    // Write it - NOTE: UNSAFE!
-                    let sent_at = Utc::now();
-                    self.write(to_write).await;
-
-                    (last_sent, last_value) = (sent_at, to_write);
-                    // Write completed- schedule next poll.
-                    sleep(self.config.backoff).await;
-                },
-                Err(TryRecvError::Disconnected) => panic!("SquarePolling :: Interpreter Output Channel hung up!"),
-                // No value waiting to write- schedule next poll.
-                _ => sleep(self.config.backoff).await
+                // Write it - NOTE: UNSAFE!
+                let sent_at = Utc::now();
+                let value = to_write.borrow().unwrap().clone();
+                self.write(value).await;
             }
+            // Schedule next poll.
+            sleep(self.config.backoff).await;
         }
     }
 

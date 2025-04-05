@@ -1,4 +1,3 @@
-use crate::simulation::messages::UserAction;
 use crate::value::Value;
 
 #[derive(Debug, Copy, Clone)]

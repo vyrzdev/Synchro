@@ -1,24 +1,19 @@
 use std::time::Duration;
-use log::{debug, error, info, warn};
+use log::{error, info, warn};
 use nexosim::ports::{EventBuffer, EventSlot};
-use nexosim::simulation::{Mailbox, SimInit, Simulation};
 use tai_time::MonotonicTime;
-use crate::interpreter::error::ConflictError;
 use crate::interpreter::history::History;
 use crate::predicates::DefinitionPredicate;
 use crate::simulation::config::SimulationConfig;
 use crate::simulation::error::{DivergenceError, SimulationError};
-use crate::simulation::interpreter::interpreter::{Interpreter, InterpreterConfig};
 use crate::simulation::model::build_model;
-use crate::simulation::polling::safe::{ProtoSafePollingModel, SafePollingModel};
 use crate::simulation::results::{SimulationResults, SimulationStatistics};
-use crate::value::Value;
 pub type TruthRecord = (DefinitionPredicate, MonotonicTime);
 
 fn iteration(simulation_config: &SimulationConfig) -> Result<Option<Duration>, SimulationError> {
     let mut truth_sink = EventBuffer::new(); // Get true event records.
     let mut found_slot = EventSlot::new(); // Where calculated values go for comparison.
-    let mut simulation = build_model(simulation_config, &mut truth_sink, &found_slot); // TODO: Wire Up Simulation Config.
+    let mut simulation = build_model(simulation_config, &mut truth_sink, &found_slot);
 
     // Error-Trace Capture
     let mut truth_records = vec![];
@@ -26,25 +21,25 @@ fn iteration(simulation_config: &SimulationConfig) -> Result<Option<Duration>, S
     // Statistics Capture
     let mut convergence_times = Vec::new();
 
-
     // Main Simulation Loop.
     let mut diverged_at = None; // When the simulation last diverged.
     let mut true_value = simulation_config.initial_value; // Calculated true-value.
     let mut observed_value = None;
     // TODO: Detect Liveness.
 
-    while simulation.time() < simulation_config.until {
+    while simulation.time() < (simulation_config.until + Duration::from_secs(60)) {
         simulation.step()?; // Advance simulation.
 
         // Consume and apply all true events at the moment when they occur.
         for (event, at) in &mut truth_sink {
+            truth_records.push((event.clone(), at));
             true_value = event.apply(Some(true_value)).unwrap(); // All true events are known, and defined for all inputs.
-            debug!("True Event {:?} -> {} at {at:?}", event, true_value);
+            // debug!("True Event {:?} -> {} at {at:?}", event, true_value);
         }
 
         // Consume and log interpreted values.
         if let Some(observed) = found_slot.next() {
-            debug!("Value Observed: {:?}", observed);
+            // debug!("Value Observed: {:?}", observed);
             match observed {
                 // If value - update observed.
                 Ok(value) => {
@@ -52,23 +47,15 @@ fn iteration(simulation_config: &SimulationConfig) -> Result<Option<Duration>, S
                     match diverged_at {
                         // If has diverged, and has now converged.
                         Some(t) if value == true_value => {
-                            debug!("Converged after: {:?}", simulation.time().duration_since(t));
+                            // info!("Converged after: {:?}", simulation.time().duration_since(t));
                             // Log time taken to converge.
                             convergence_times.push(simulation.time().duration_since(t)); // t < now
-                            diverged_at = None; // Reset divergence counter.
-                        },
-                        // If has been divergent for longer than maximum cutoff time.
-                        Some(t) if simulation.time().duration_since(t) > simulation_config.max_divergence_before_error => {
-                            // End simulation with Divergence.
-                            return Err(SimulationError::Divergence(DivergenceError {
-                                diverged_at: t,
-                                truth: truth_records,
-                                history: History::new(), // TODO: Wire Up History!
-                            }))
+                            diverged_at = None; // Reset divergence counter.\
+
                         },
                         // If has not been divergent, and has now diverged.
                         None if value != true_value => {
-                            info!("DIVERGED AT {}", simulation.time());
+                            // info!("DIVERGED AT {}", simulation.time());
                             // Log that fact. (flips switch)
                             diverged_at = Some(simulation.time());
                         },
@@ -79,6 +66,18 @@ fn iteration(simulation_config: &SimulationConfig) -> Result<Option<Duration>, S
                 Err(conflict) => return Err(SimulationError::Conflict(conflict)),
             }
         }
+    }
+
+    if diverged_at.is_some() {
+        // info!("TruthRecord: {truth_records:?}");
+        info!("Truth: {true_value:?}");
+        info!("Observed: {observed_value:?}");
+
+        return Err(SimulationError::Divergence(DivergenceError {
+            diverged_at: diverged_at.unwrap(),
+            truth: truth_records,
+            history: History::new(), // TODO: Wire up History (not so easy)
+        }))
     }
 
     if convergence_times.is_empty() {
@@ -99,6 +98,7 @@ pub fn driver(
 
     for i in 0..iterations {
         info!("Running Iteration {i}");
+        println!("Running Iteration {i}");
 
         match iteration(&simulation_config) {
             Ok(x) => {
@@ -111,7 +111,9 @@ pub fn driver(
             Err(e) => match e {
                 SimulationError::Divergence(error) => {
                     info!("Simulation Iteration {i} ended with Divergence!");
+                    info!("");
                     info!("Error Logged to File TODO"); // TODO: Wire up error output.
+                    info!("Divergence at: {:?}", error.diverged_at);
                     divergence.push(error);
                 }
                 SimulationError::Conflict(conflict) => {

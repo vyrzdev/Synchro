@@ -3,7 +3,7 @@ use nexosim::model::{Context, InitializedModel, Model};
 use nexosim::ports::Output;
 use rand::Rng;
 use rand_distr::Exp;
-use crate::simulation::messages::{InterfaceQuery, PlatformQuery, UserAction};
+use crate::simulation::messages::{PlatformQuery, UserAction};
 use crate::simulation::user::UserParameters;
 
 pub struct User {
@@ -31,8 +31,10 @@ impl User {
             // Do Sale
             self.action_output.send(PlatformQuery::User(UserAction::Assignment(self.config.edit_to))).await;
             // Schedule next sale
-            let next_edit = ctx.time() + Duration::from_millis(rand::rng().sample(self.edit_distribution).round() as u64);
-            ctx.schedule_event(next_edit, Self::do_edit, ()).unwrap();
+            let next_edit = ctx.time() + Duration::from_millis(rand::rng().sample(self.edit_distribution).round() as u64 + 1);
+            if next_edit < self.config.until {
+                ctx.schedule_event(next_edit, Self::do_edit, ()).expect(format!("Error Scheduling At: {:?}", next_edit).as_str());
+            }
         }
     }
 
@@ -45,8 +47,10 @@ impl User {
             // Do Sale
             self.action_output.send(PlatformQuery::User(UserAction::Mutation(-1))).await;
             // Schedule next sale
-            let next_sale = ctx.time() + Duration::from_millis(rand::rng().sample(self.sale_distribution).round() as u64);
-            ctx.schedule_event(next_sale, Self::do_sale, ()).unwrap();
+            let next_sale = ctx.time() + Duration::from_millis(rand::rng().sample(self.sale_distribution).round() as u64 + 1);
+            if next_sale < self.config.until {
+                ctx.schedule_event(next_sale, Self::do_sale, ()).expect(format!("Error Scheduling At: {:?}", next_sale).as_str());
+            }
         }
     }
 }

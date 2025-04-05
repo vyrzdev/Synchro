@@ -1,7 +1,4 @@
 use std::cmp::Ordering;
-use chrono::{DateTime, Utc};
-use nexosim::time::MonotonicTime;
-
 #[derive(Debug, Copy, Clone)]
 pub struct Interval<T: PartialOrd>(pub T, pub T); // Generic Interval Type.
 
@@ -24,7 +21,6 @@ impl<T: PartialOrd> PartialOrd for Interval<T> {
 }
 
 // Chrono Intervals, ideal for UTC calculations and safely decoding Square representation.
-pub type RealIntervals = Interval<DateTime<Utc>>;
-
+// pub type RealIntervals = Interval<DateTime<Utc>>;
 // Simulator requires use of dedicated time-type, MonotonicTime.
-pub type SimulationIntervals = Interval<MonotonicTime>;
+// pub type SimulationIntervals = Interval<MonotonicTime>;

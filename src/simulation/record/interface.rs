@@ -2,6 +2,7 @@ use std::time::Duration;
 use chrono::TimeDelta;
 use nexosim::model::{Context, InitializedModel, Model};
 use nexosim::ports::Output;
+use serde::{Deserialize, Serialize};
 use tai_time::MonotonicTime;
 use crate::intervals::Interval;
 use crate::observations::Observation;
@@ -10,7 +11,7 @@ use crate::simulation::data::SimulationMetaData;
 use crate::simulation::messages::{InterfaceQuery, PlatformQuery};
 use crate::simulation::record::messages::{RecordQuery, RecordReply};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RecordInterfaceParameters {
     pub(crate) backoff: Duration,
 }

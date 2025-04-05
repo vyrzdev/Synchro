@@ -1,6 +1,5 @@
 use tai_time::MonotonicTime;
 use crate::simulation::record::platform::Event;
-use crate::value::Value;
 
 #[derive(Debug, Clone)]
 pub enum RecordReply {

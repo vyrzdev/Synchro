@@ -8,7 +8,7 @@ pub enum DefinitionPredicate {
     Unknown // Unknown => K(v) = undefined.
 }
 impl DefinitionPredicate {
-    pub fn apply(&self, mut value: Option<Value>) -> Option<Value>{
+    pub fn apply(&self, value: Option<Value>) -> Option<Value>{
         match (self, value) {
             // Transitions are defined only for their known input.
             (Transition(s_0, s_1), Some(v)) if &v == s_0 => Some(s_1.clone()),

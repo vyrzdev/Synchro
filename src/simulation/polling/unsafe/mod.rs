@@ -6,6 +6,7 @@ pub mod messages;
 use nexosim::model::{BuildContext, Model, ProtoModel};
 use nexosim::ports::Output;
 use nexosim::simulation::Mailbox;
+use serde::{Deserialize, Serialize};
 use tai_time::MonotonicTime;
 use crate::interpreter::error::ConflictError;
 use crate::observations::Observation;
@@ -22,7 +23,7 @@ pub struct UnsafePollingModel {
     internal_write_output: Output<Result<Value, ConflictError<MonotonicTime>>>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct UnsafePollingConfig {
     pub(crate) initial_value: Value,
     pub(crate) network_params: NetworkParameters,
@@ -50,7 +51,7 @@ pub struct ProtoUnsafePollingModel {
     pub truth_output: Output<TruthRecord>,
 }
 impl ProtoUnsafePollingModel {
-    pub fn new(name: String, initial_value: Value, config: UnsafePollingConfig) -> ProtoUnsafePollingModel {
+    pub fn new(name: String, config: UnsafePollingConfig) -> ProtoUnsafePollingModel {
         ProtoUnsafePollingModel {
             name,
             observation_output: Default::default(),
@@ -63,7 +64,7 @@ impl ProtoUnsafePollingModel {
 impl ProtoModel for ProtoUnsafePollingModel {
     type Model = UnsafePollingModel;
 
-    fn build(mut self, cx: &mut BuildContext<Self>) -> Self::Model {
+    fn build(self, cx: &mut BuildContext<Self>) -> Self::Model {
         let mut model = UnsafePollingModel::new();
         // Initialise Platform Model
         let mut platform = UnsafePollingPlatform::new(self.name.clone(), self.config.initial_value);

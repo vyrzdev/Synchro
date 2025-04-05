@@ -1,14 +1,14 @@
-use std::time::Duration;
 use nexosim::model::{Context, Model};
 use nexosim::ports::Output;
 use nexosim::time::MonotonicTime;
 use chrono::TimeDelta;
+use serde::{Deserialize, Serialize};
 use crate::predicates::DefinitionPredicate;
 use crate::simulation::driver::TruthRecord;
 use crate::simulation::messages::{InterfaceQuery, PlatformQuery, UserAction};
 use crate::simulation::record::messages::{RecordQuery, RecordReply};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RecordPlatformParameters {
     pub(crate) deviation: TimeDelta,
 }

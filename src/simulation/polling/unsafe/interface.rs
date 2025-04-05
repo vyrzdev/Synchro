@@ -1,5 +1,3 @@
-use std::time::Duration;
-use log::info;
 use nexosim::model::{Context, InitializedModel, Model};
 use nexosim::ports::Output;
 use nexosim::simulation::ActionKey;
@@ -14,7 +12,6 @@ use crate::simulation::messages::{InterfaceQuery, PlatformQuery};
 use crate::simulation::polling::config::{PollingInterfaceParameters, PollingInterpretation};
 use crate::simulation::polling::data::{FinishedPoll, PollState, SentPoll, WriteState};
 use crate::simulation::polling::r#unsafe::messages::{UnsafePollQuery, UnsafePollReply};
-use crate::simulation::polling::safe::messages::{SafePollQuery, SafePollReply};
 use crate::value::Value;
 
 
@@ -50,7 +47,7 @@ impl UnsafePollingInterface {
         }
     }
 
-    pub async fn interpreter_input(&mut self, observed_value: Result<Value, ConflictError<MonotonicTime>>, ctx: &mut Context<Self>) {
+    pub async fn interpreter_input(&mut self, observed_value: Result<Value, ConflictError<MonotonicTime>>, _: &mut Context<Self>) {
         match observed_value {
             // Queue write for after next poll- if write is not yet in flight, overwrite it.
             // Do not cancel poll - minimises unsafe time in exchange for longer convergence.
@@ -58,7 +55,7 @@ impl UnsafePollingInterface {
                 self.waiting_write = Some(value);
             },
             // Do not write on conflict! (Simulation will end soon)
-            Err(conflict) => return
+            Err(_) => return
         }
     }
 

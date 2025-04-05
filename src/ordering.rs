@@ -10,7 +10,7 @@ pub enum PlatformMetadata {
 }
 
 impl PartialEq<Self> for PlatformMetadata {
-    fn eq(&self, other: &Self) -> bool {
+    fn eq(&self, _: &Self) -> bool {
         false // Events are unique!
     }
 }
@@ -35,7 +35,7 @@ impl PartialOrd for PlatformMetadata {
 }
 
 impl<T: PartialOrd + Clone> PartialEq for Observation<T> {
-    fn eq(&self, other: &Self) -> bool {
+    fn eq(&self, _: &Self) -> bool {
         false // Observations are UNIQUE.
     }
 }
@@ -45,7 +45,7 @@ impl<T: PartialOrd + Clone> PartialOrd for Observation<T> {
         match self.interval.partial_cmp(&other.interval) {
             // If intervals overlap, but from same replica, check source logical ordering.
             None if self.source == other.source => self.platform_metadata.partial_cmp(&other.platform_metadata),
-            (x) => x // Otherwise, return interval ordering.
+            x => x // Otherwise, return interval ordering.
         }
     }
 }

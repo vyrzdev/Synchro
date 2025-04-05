@@ -5,7 +5,7 @@ pub struct SimulationMetaData {
     pub(crate) monotonic: u64
 }
 impl PartialEq for SimulationMetaData {
-    fn eq(&self, other: &Self) -> bool {
+    fn eq(&self, _: &Self) -> bool {
         false // Monotonics are never equal.
     }
 }

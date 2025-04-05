@@ -3,8 +3,9 @@ use nexosim::model::{Context, Model};
 use nexosim::ports::{Output};
 use rand::Rng;
 use rand_distr::Pareto;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NetworkParameters {
     pub(crate) size: f64, // Avg milliseconds one-way RTT.
     pub(crate) scale: f64 // Scale of Pareto - Larger = less extremes.

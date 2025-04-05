@@ -3,9 +3,10 @@ pub mod platform;
 pub mod messages;
 
 // Safe Polling Protomodel
-use nexosim::model::{BuildContext, Context, Model, ProtoModel};
+use nexosim::model::{BuildContext, Model, ProtoModel};
 use nexosim::ports::Output;
 use nexosim::simulation::Mailbox;
+use serde::{Deserialize, Serialize};
 use tai_time::MonotonicTime;
 use crate::interpreter::error::ConflictError;
 use crate::observations::Observation;
@@ -22,7 +23,7 @@ pub struct SafePollingModel {
     internal_write_output: Output<Result<Value, ConflictError<MonotonicTime>>>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SafePollingConfig {
     pub(crate) initial_value: Value,
     pub(crate) network_params: NetworkParameters,
@@ -50,7 +51,7 @@ pub struct ProtoSafePollingModel {
     pub truth_output: Output<TruthRecord>,
 }
 impl ProtoSafePollingModel {
-    pub fn new(name: String, initial_value: Value, config: SafePollingConfig) -> ProtoSafePollingModel {
+    pub fn new(name: String, config: SafePollingConfig) -> ProtoSafePollingModel {
         ProtoSafePollingModel {
             name,
             observation_output: Default::default(),
@@ -63,7 +64,7 @@ impl ProtoSafePollingModel {
 impl ProtoModel for ProtoSafePollingModel {
     type Model = SafePollingModel;
 
-    fn build(mut self, cx: &mut BuildContext<Self>) -> Self::Model {
+    fn build(self, cx: &mut BuildContext<Self>) -> Self::Model {
         let mut model = SafePollingModel::new();
         // Initialise Platform Model
         let mut platform = SafePollingPlatform::new(self.name.clone(), self.config.initial_value);

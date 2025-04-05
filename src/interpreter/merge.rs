@@ -2,7 +2,7 @@ use crate::observations::Observation;
 use crate::predicates::DefinitionPredicate;
 use crate::predicates::DefinitionPredicate::Unknown;
 
-fn merge_procedure<T: PartialOrd + Clone>(observations: &Vec<Observation<T>>) -> DefinitionPredicate {
+pub fn merge_procedure<T: PartialOrd + Clone>(observations: &Vec<Observation<T>>) -> DefinitionPredicate {
     let mut all_mutations = true;
     let mut sum = 0;
 

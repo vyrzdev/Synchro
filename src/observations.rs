@@ -1,5 +1,4 @@
 use std::fmt::{Display, Formatter};
-use tai_time::MonotonicTime;
 use crate::intervals::Interval;
 use crate::ordering::PlatformMetadata;
 use crate::predicates::DefinitionPredicate;

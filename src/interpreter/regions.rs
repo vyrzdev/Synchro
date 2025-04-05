@@ -1,12 +1,13 @@
 use std::cmp::Ordering;
+use crate::interpreter::merge::merge_procedure;
 use crate::observations::Observation;
 use crate::predicates::DefinitionPredicate;
 use crate::value::Value;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Region<T: PartialOrd + Clone> {
     pub(crate) observations: Vec<Observation<T>>,
-    cached_definition: Option<DefinitionPredicate>
+    pub(crate) cached_definition: Option<DefinitionPredicate>
 }
 
 impl<T: PartialOrd + Clone> PartialEq for Region<T> {
@@ -38,8 +39,9 @@ impl<T: PartialOrd + Clone> Region<T> {
                 // If no definition cached, must have had insert- n > 1.
                 // Therefore, apply merge procedure.
                 // If un-mergeable, returns Unknown which applied gives None
-                let merged = None; // TODO: Wire Up Merge Procedure.
-                return merged
+                let merged = merge_procedure(&self.observations); // TODO: Wire Up Merge Procedure.
+                self.cached_definition = Some(merged.clone());
+                merged.apply(value)
             }
         }
     }

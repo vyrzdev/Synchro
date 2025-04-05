@@ -1,0 +1,65 @@
+{
+  "Simulation": [
+    {
+      "until": 100000,
+      "initial_value": 100,
+      "max_divergence_before_error": {
+        "secs": 5,
+        "nanos": 0
+      },
+      "platforms": {
+        "Polling2": {
+          "PollingUnsafe": {
+            "initial_value": 100,
+            "network_params": {
+              "size": 20.0,
+              "scale":4.0
+            },
+            "interface_params": {
+              "interp": "AllMut",
+              "backoff": {
+                "secs": 0,
+                "nanos": 200000000
+              }
+            },
+            "user_params": {
+              "until": 100000,
+              "average_sales_per_hour": 10.0,
+              "average_edits_per_day": 0.0,
+              "edit_to": 100,
+              "start_after": {
+                "secs": 2,
+                "nanos": 0
+              }
+            }
+          }
+        },
+        "Polling1": {
+          "PollingUnsafe": {
+            "initial_value": 100,
+            "network_params": {
+              "size": 20.0,
+              "scale":4.0
+            },
+            "interface_params": {
+              "interp": "AllMut",
+              "backoff": {
+                "secs": 0,
+                "nanos": 200000000
+              }
+            },
+            "user_params": {
+              "until": 100000,
+              "average_sales_per_hour": 10.0,
+              "average_edits_per_day": 0.0,
+              "edit_to": 100,
+              "start_after": {
+                "secs": 2,
+                "nanos": 0
+              }
+            }
+          }
+        }
+      }
+  }
+]}

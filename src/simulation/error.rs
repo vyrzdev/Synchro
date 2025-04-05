@@ -5,6 +5,7 @@ use crate::interpreter::error::ConflictError;
 use crate::interpreter::history::History;
 use crate::simulation::driver::TruthRecord;
 
+#[derive(Debug)]
 pub enum SimulationError {
     Divergence(DivergenceError),
     Conflict(ConflictError<MonotonicTime>),

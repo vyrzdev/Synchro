@@ -1,5 +1,4 @@
-use std::time::Duration;
-use log::{debug, info};
+use log::{error};
 use nexosim::model::{Context, InitializedModel, Model};
 use nexosim::ports::Output;
 use nexosim::simulation::ActionKey;
@@ -65,6 +64,7 @@ impl SafePollingInterface {
                     // Guard with last observed value.
                     self.query_output.send(PlatformQuery::Interface(InterfaceQuery::PollingSafe(SafePollQuery::Write(value, self.poll_state.last.value)))).await;
                     // Log write.
+                    // info!("TRACE3 - WRITE STATE SET TO {}", ctx.time());
                     self.write_state = Some(WriteState {
                         sent: ctx.time(),
                         value
@@ -76,21 +76,26 @@ impl SafePollingInterface {
                 }
             },
             // Do not write on conflict! (Simulation will end soon)
-            Err(conflict) => return
+            Err(_) => return
         }
     }
 
     pub async fn platform_input(&mut self, reply: SafePollReply, ctx: &mut Context<Self>) {
+        // info!("{} got {reply:?} at {:?}", self.name, ctx.time());
         match reply {
             // If poll query replies, and does not equal last.
             SafePollReply::Query(v) => {
+                let current_poll = self.poll_state.current.take().unwrap();
+
+                // info!{"Current Poll: {}", current_poll.at}
                 if v != self.poll_state.last.value {
+                    // info!("Generating Observation at {:?}", ctx.time());
                     self.generate_observation(self.poll_state.last.value, v, ctx).await;
                 }
 
-                let current_poll = self.poll_state.current.take().unwrap();
 
                 // Write last value.
+                // info!("Set Poll State To: {:?} at: {:?}", current_poll.at, ctx.time());
                 self.poll_state.last = FinishedPoll {
                     sent: current_poll.at,
                     value: v,
@@ -98,11 +103,12 @@ impl SafePollingInterface {
 
                 // If a write is waiting- send it.
                 if let Some(waiting) = self.waiting_write {
-                    debug!("Write waiting on inflight poll- being sent now!");
+                    // debug!("Write waiting on inflight poll- being sent now!");
                     // Send it, guarded with new observed value.
                     self.query_output.send(PlatformQuery::Interface(InterfaceQuery::PollingSafe(SafePollQuery::Write(waiting, v)))).await;
 
                     // Log write.
+                    // info!("TRACE2 - WRITE STATE SET TO {}", ctx.time());
                     self.write_state = Some(WriteState {
                         sent: ctx.time(),
                         value: waiting,
@@ -130,10 +136,11 @@ impl SafePollingInterface {
 
                 // If there's another write waiting...
                 if let Some(waiting) = self.waiting_write {
-                    debug!("Write waiting on inflight write- being sent now!");
+                    // debug!("Write waiting on inflight write- being sent now!");
                     // Send it, guarded with new successfully written value.
                     self.query_output.send(PlatformQuery::Interface(InterfaceQuery::PollingSafe(SafePollQuery::Write(waiting, successful_write.value)))).await;
 
+                    // info!("TRACE1 - WRITE STATE SET TO {}", ctx.time());
                     // Log write.
                     self.write_state = Some(WriteState {
                         sent: ctx.time(),
@@ -152,9 +159,11 @@ impl SafePollingInterface {
             }
             // If write failed...
             SafePollReply::WriteFail(new_value) => {
-                debug!("Write failed- voiding pending write and making observation!");
+
+                // debug!("Write failed- voiding pending write and making observation!");
                 let failed_write = self.write_state.take().unwrap();
                 // Is due to a change-
+                // info!("WRITE FAILED: {:?}, {:?}, {:?}, {:?}, {:?}", failed_write, self.poll_state.last.value, new_value, self.poll_state.last.sent, ctx.time());
                 self.generate_observation(self.poll_state.last.value, new_value, ctx).await;
 
                 // If write waiting, clear it as new obs will likely overwrite it.
@@ -177,8 +186,9 @@ impl SafePollingInterface {
     }
 
     pub async fn generate_observation(&mut self, from: Value, to: Value, ctx: &mut Context<Self>) {
-        let interval = Interval(self.poll_state.last.sent, ctx.time());
-
+        if ctx.time() < self.poll_state.last.sent {
+            error!("Got Backwards Observation: {:?}, {:?}", self.poll_state.last.sent, ctx.time());
+        };
         self.observation_output.send(Observation {
             interval: Interval(self.poll_state.last.sent, ctx.time()),
             definition_predicate: match self.config.interp {
@@ -195,9 +205,10 @@ impl SafePollingInterface {
     }
 
     pub async fn poll(&mut self, _: (), ctx: &mut Context<Self>) {
-        if self.name=="Polling1" {
-            // debug!("Polled At: {}", ctx.time());
-        }
+        // if self.name=="Polling1" {
+        //     // debug!("Polled At: {}", ctx.time());
+        // }
+        // info!("Wrote Current Poll to {}", ctx.time());
         // Log poll.
         self.poll_state.current = Some(SentPoll {
             at: ctx.time(),

@@ -28,7 +28,7 @@ pub fn build_model(
     for (name, polling_cfg) in cfg.platforms.iter() {
         match polling_cfg {
             PlatformConfig::PollingSafe(safe_cfg) => {
-                let mut polling_model = ProtoSafePollingModel::new(name.clone(), cfg.initial_value.clone(), safe_cfg.clone());
+                let mut polling_model = ProtoSafePollingModel::new(name.clone(), safe_cfg.clone());
                 let polling_mbox = Mailbox::new();
 
                 // Attach truth output.
@@ -43,7 +43,7 @@ pub fn build_model(
                 model = model.add_model(polling_model, polling_mbox, format!("SafePolling-{}", name))
             }
             PlatformConfig::PollingUnsafe(unsafe_cfg) => {
-                let mut polling_model = ProtoUnsafePollingModel::new(name.clone(), cfg.initial_value.clone(), unsafe_cfg.clone());
+                let mut polling_model = ProtoUnsafePollingModel::new(name.clone(), unsafe_cfg.clone());
                 let polling_mbox = Mailbox::new();
 
                 // Attach truth output.
@@ -76,6 +76,6 @@ pub fn build_model(
     model = model.add_model(interpreter, interpreter_in, "Interpreter");
 
     // Construct Simulation
-    let simu =  model.init(t0).unwrap().0;
+    let (simu, _) =  model.init(t0).unwrap();
     return simu;
 }

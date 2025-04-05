@@ -8,22 +8,19 @@ pub mod interface;
 use nexosim::model::{BuildContext, Model, ProtoModel};
 use nexosim::ports::Output;
 use nexosim::simulation::Mailbox;
+use serde::{Deserialize, Serialize};
 use tai_time::MonotonicTime;
 use crate::observations::Observation;
 use crate::simulation::driver::TruthRecord;
-use crate::simulation::messages::InterfaceQuery::Record;
 use crate::simulation::network::network_delay::{NetworkConnection, NetworkParameters};
-use crate::simulation::polling::r#unsafe::interface::UnsafePollingInterface;
-use crate::simulation::polling::r#unsafe::platform::UnsafePollingPlatform;
 use crate::simulation::record::interface::{RecordInterface, RecordInterfaceParameters};
 use crate::simulation::record::platform::{RecordPlatform, RecordPlatformParameters};
 use crate::simulation::user::user::User;
 use crate::simulation::user::UserParameters;
-use crate::value::Value;
 
 pub struct RecordModel {}
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RecordConfig {
     pub(crate) network_params: NetworkParameters,
     pub(crate) interface_params: RecordInterfaceParameters,
