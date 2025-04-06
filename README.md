@@ -1,5 +1,5 @@
 # Synchro
-A simulator and real world demonstration of best-effort consistency between sovereign systems designed for Multi-Channel E-Commerce.
+A simulator and real world demonstration of best-effort consistency for Multi-Channel E-Commerce.
 
 ## Installation
 The project is written in Rust- as of right now you must build it from source.\
