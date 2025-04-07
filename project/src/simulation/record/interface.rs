@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use tai_time::MonotonicTime;
 use crate::core::intervals::Interval;
 use crate::core::observations::Observation;
+use crate::core::ordering::PlatformMetadata;
 use crate::simulation::data::SimulationMetaData;
 use crate::simulation::messages::{InterfaceQuery, PlatformQuery};
 use crate::simulation::record::messages::{RecordQuery, RecordReply};

@@ -1,17 +1,19 @@
 #![feature(linked_list_cursors)] // Used for history automata
 #![feature(future_join)] // Join all futures.
-use std::{fs};
-use std::path::{Path, PathBuf};
-use log::LevelFilter;
-use log4rs::append::file::FileAppender;
-use log4rs::encode::pattern::PatternEncoder;
-use log4rs::config::{Appender, Root};
-use log4rs::config::Config as LogConfig;
-use log4rs::Handle;
-use log::info;
+use std::{env, fs};
+use std::path::{PathBuf};
+use std::time::Duration;
+use log::{error, info, warn};
 use crate::config::Config;
 use clap::{command, Parser, Subcommand};
-use crate::real_world::config::RealWorldConfig;
+use squareup::api::CatalogApi;
+use squareup::config::{BaseUri, Configuration, Environment};
+use squareup::http::client::HttpClientConfiguration;
+use squareup::models::enums::CatalogObjectType::ItemVariation;
+use squareup::models::errors::SquareApiError;
+use squareup::models::{ListCatalogParameters, ListCatalogResponse, RetrieveCatalogObjectParameters, RetrieveCatalogObjectResponse};
+use squareup::SquareClient;
+use tokio::time::sleep;
 use crate::real_world::real_world_main;
 use crate::simulate::simulate;
 
@@ -46,6 +48,10 @@ enum Commands {
         /// Path to the config file
         config_file: PathBuf,
     },
+    /// List all the products using an access token.
+    List {
+        access_token: String,
+    }
 }
 
 /// The main entry point for the application.
@@ -84,6 +90,58 @@ async fn main() {
                 real_world_main(cfg).await; // run realworld
             } else {
                 log::warn!("Config in {} was not a RealWorld variant", config_file.display());
+            }
+        },
+        Commands::List { access_token } => {
+            unsafe {
+                env::set_var("SQUARE_API_TOKEN", access_token);
+            }
+
+            // Initialise Catalog API
+            let catalog_api = CatalogApi::new(SquareClient::try_new(Configuration {
+                environment: Environment::Sandbox, // Testing in Sandbox Environment
+                http_client_config: HttpClientConfiguration::default(),
+                base_uri: BaseUri::default(),
+            }).unwrap());
+
+            loop {
+                match catalog_api.list_catalog(&ListCatalogParameters {
+                    cursor: None,
+                    types: Some(vec![ItemVariation]),
+                    catalog_version: None,
+                }).await {
+                    Ok(resp) => {
+                        println!("Items:");
+                        for item in resp.objects.expect("No items in response") {
+                            let item_name;
+                            loop {
+                                match catalog_api.retrieve_catalog_object(item.item_variation_data.as_ref().unwrap().clone().item_id.unwrap(), &RetrieveCatalogObjectParameters {
+                                    include_related_objects: None,
+                                    catalog_version: None,
+                                    include_category_path_to_root: None,
+                                }).await {
+                                    Ok(v) => {
+                                        item_name = v.object.unwrap().item_data.unwrap().name.unwrap();
+                                        break;
+                                    }
+                                    Err(e) => {
+                                        error!("Square :: API Error: {e:#?}");
+                                        warn!("Sandboxing, waiting 200ms and trying again!");
+                                        sleep(Duration::from_millis(200)).await;
+                                    }
+                                }
+
+                            }
+                            println!("{} ({}) - {}", item_name,  item.item_variation_data.expect("Variation had no variation data!?").name.expect("Variation had no name?!"), item.id);
+                        }
+                        break
+                    }
+                    Err(e) => {
+                        error!("Square :: API Error: {e:#?}");
+                        warn!("Sandboxing, waiting 200ms and trying again!");
+                        sleep(Duration::from_millis(200)).await;
+                    }
+                };
             }
         }
     }

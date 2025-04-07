@@ -54,7 +54,7 @@ pub fn resolve_unique_path(original: &Path) -> PathBuf {
 
     // otherwise... exists
     let stem = original.file_stem().unwrap_or_default().to_string_lossy(); // get stem
-    let ext = original.extension(); // get extension and add
+    let ext = original.extension().map(|e| format!(".{}", e.to_string_lossy())).unwrap(); // get extension and add
     let parent = original.parent().unwrap_or_else(|| Path::new(""));//
 
     for i in 1.. {
@@ -100,7 +100,6 @@ pub fn make_demo_sim() -> SimulationConfig {
     SimulationConfig {
         initial_value: 100,
         until: MonotonicTime::new(10000, 0).unwrap(),
-        max_divergence_before_error: Duration::new(1, 0),
         platforms: HashMap::from([
             ("Polling1".to_string(), PlatformConfig::PollingUnsafe(UnsafePollingConfig {
                 initial_value: 100,

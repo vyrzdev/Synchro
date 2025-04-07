@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{PathBuf};
 use log4rs::append::file::FileAppender;
 use log4rs::config::{Appender, Root};
 use log4rs::encode::pattern::PatternEncoder;
@@ -94,10 +94,6 @@ pub async fn run_simulation(input_path: PathBuf, log_handle: &mut Option<Handle>
     // Read and parse the contents of the input file
     let contents = fs::read_to_string(&input_path).unwrap(); // This will panic if the file cannot be read
     info!("Reading: {input_path:?}");
-
-    // Deserialize JSON into Config
-    let config: Config = serde_json::from_str(&contents)
-        .expect(&*("Failed to parse config ".to_owned() + input_path.display().to_string().as_str())); // Panic if the JSON is improperly formatted or invalid
 
     let config: Config = serde_json::from_str(&contents)
         .expect(&*("Failed to parse config ".to_owned() + input_path.display().to_string().as_str()));

@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use crate::core::interpreter::merge::merge_procedure;
 use crate::core::observations::Observation;
 use crate::core::predicates::DefinitionPredicate;
 use crate::value::Value;

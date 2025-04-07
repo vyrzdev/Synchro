@@ -1,6 +1,6 @@
 # Synchro
 A simulator and real world demonstration of best-effort consistency between sovereign systems designed for Multi-Channel E-Commerce.
-"calibration_target": ["L0ZSXYY4THT9D", "J2OR6BTXG7TBVD7HOUV7TXFI"],
+
 
 ## Installation
 The project is written in Rust- as of right now you must build it from source.\
@@ -23,7 +23,7 @@ You can also supply a directory with many simulation configurations, in which ca
 <br>
 To run the real-world mode:\
 `synchro run <real_world_config>`\
-*note* to run the real-world mode, you must have a square developer account- see the attached [start guide](...)\
+*note* to run the real-world mode, you must have a square developer account- see the attached [start guide](START_GUIDE/START_GUIDE.md)\
 <br>
 ## Configuration
 ### Simulation
@@ -33,10 +33,6 @@ Here is an example simulation config- we include many test configs in `/scenario
   "Simulation": [{
       "until": 100000, // Run Simulation Until (in seconds)
       "initial_value": 100, // Start with value
-      "max_divergence_before_error": {
-        "secs": 100,
-        "nanos": 0
-      },
       "platforms": {
         "Polling2": { // Name (String ID)
           "PollingSafe": { // Model (Record, PollingSafe, PollingUnsafe)
@@ -105,12 +101,12 @@ Here is an example real-world config. You will need to fill in these details wit
 ```
 # Project Structure
 The structure of the project is as follows:
-- `src/interpreter`: Core logic for the system, history and application.
+- `src/core`: Core logic for the system, history and application.
 - `src/simulation`: Simulation-specific models, configuration, etc.
 - `src/real_world`: Real-World specific workers, configuration, etc.
 - `scenarios`: Various simulation configurations to explore.
 - `src`: Start logic, and common logic between all system components.
 
-*Note:* While this branch was started a couple weeks ago- there were many prior experiments and implementations.\
+*Note:* While this branch was started a few weeks ago- there were many prior experiments and implementations.\
 I include these as partial artifacts for reference in the `archive` directory.
 
