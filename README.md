@@ -1,5 +1,6 @@
 # Synchro
 A simulator and real world demonstration of best-effort consistency between sovereign systems designed for Multi-Channel E-Commerce.
+"calibration_target": ["L0ZSXYY4THT9D", "J2OR6BTXG7TBVD7HOUV7TXFI"],
 
 ## Installation
 The project is written in Rust- as of right now you must build it from source.\

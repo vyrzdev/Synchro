@@ -7,12 +7,34 @@ use crate::simulation::polling::safe::SafePollingConfig;
 use crate::simulation::record::RecordConfig;
 use crate::value::Value;
 
+
+/// The `SimulationConfig` struct holds the configuration parameters for a simulation.
+///
+/// # Fields
+/// - `initial_value`: The initial value of the simulation, represented as a `Value`.
+/// - `until`: A `MonotonicTime` representing the point in time until which the simulation runs.
+///            This field is serialized and deserialized using the `serde_monotonic_helper` module.
+/// - `platforms`: A `HashMap` mapping platform names (as `String`) to their respective
+///            `PlatformConfig`.
+///
+/// # Example
+/// ```
+/// use tai_time::MonotonicTime;
+/// use std::collections::HashMap;
+/// use std::time::Duration;
+/// use crate::{Value, SimulationConfig, PlatformConfig};
+///
+/// let config = SimulationConfig {
+///     initial_value: Value::new(), // Example, replace with the actual `Value` constructor.
+///     until: MonotonicTime::now(),
+///     platforms: HashMap::new(),
+/// };
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SimulationConfig {
     pub(crate) initial_value: Value,
     #[serde(with="serde_monotonic_helper")]
     pub(crate) until: MonotonicTime,
-    pub(crate) max_divergence_before_error: Duration,
     pub(crate) platforms: HashMap<String, PlatformConfig>,
 }
 
@@ -35,6 +57,7 @@ pub mod serde_monotonic_helper {
     }
 }
 
+/// platform config types
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum PlatformConfig {
     PollingSafe(SafePollingConfig),

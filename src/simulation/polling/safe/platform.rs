@@ -1,8 +1,8 @@
 use std::time::Duration;
 use nexosim::model::{Context, Model};
 use nexosim::ports::Output;
+use crate::core::predicates::DefinitionPredicate;
 use crate::simulation::messages::{InterfaceQuery, PlatformQuery, UserAction};
-use crate::predicates::DefinitionPredicate;
 use crate::simulation::driver::TruthRecord;
 use crate::simulation::polling::safe::messages::{SafePollQuery, SafePollReply};
 use crate::value::Value;

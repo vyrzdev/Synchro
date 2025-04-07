@@ -2,15 +2,17 @@ use std::collections::LinkedList;
 use nexosim::model::{Context, Model};
 use nexosim::ports::{Output};
 use tai_time::MonotonicTime;
-use crate::interpreter::error::ConflictError;
-use crate::interpreter::history::History;
-use crate::observations::Observation;
+use crate::core::interpreter::error::ConflictError;
+use crate::core::interpreter::history::History;
+use crate::core::observations::Observation;
 use crate::value::Value;
 
 pub struct InterpreterConfig {
     pub(crate) initial_value: Value
 }
 
+
+/// Interpreter model for DES SIMULATION.
 pub struct Interpreter {
     history: History<MonotonicTime>,
     config: InterpreterConfig,
@@ -28,7 +30,8 @@ impl Interpreter {
         }
     }
 
-    // TODO: Requestor/buffered port here to improve simulation speed.
+    /// Input function for interpreter model.
+    /// TODO: Requestor/buffered port here to improve simulation speed.
     pub (crate) async fn input(&mut self, observation: Observation<MonotonicTime>, ctx: &mut Context<Self>) {
         // debug!("Observed {:?} at {}", observation, ctx.time());
 

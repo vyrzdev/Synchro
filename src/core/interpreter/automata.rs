@@ -2,11 +2,17 @@ use std::cmp::Ordering;
 use std::fmt::Debug;
 use std::ops::Index;
 use chrono::{DateTime, TimeDelta, Utc};
+use log::info;
 use tai_time::MonotonicTime;
-use crate::interpreter::history::History;
-use crate::interpreter::regions::Region;
-use crate::observations::Observation;
+use crate::core::interpreter::history::History;
+use crate::core::interpreter::regions::Region;
+use crate::core::observations::Observation;
 
+
+
+
+/// Prune trait- defines constant time at which to prune.
+/// TODO: Improve prune logic (intelligent prune based on Common Monostable Prefix)
 pub(crate) trait Prune {
     fn prune(&self, now: Self) -> bool;
 }
@@ -25,6 +31,18 @@ impl Prune for MonotonicTime {
 
 impl<T: PartialOrd + Clone + Prune + Debug> History<T> {
     // Insertion Automata
+
+    /// Insertion automata for history struct...
+    /// When the inserted observation is greater than all in the previous region, and less than all in the
+    /// next region, or there is no next region- a new region is inserted. When the inserted observation
+    /// is incomparable with any nodes in a region, but less than all in the next region, and greater
+    /// than all in the previous, the observation is added to the region. Alternatively, when the inserted
+    /// observation is incomparable with any nodes in a region, and subsequent regions, we capture all
+    /// of these regions- removing them from the list and building a new region from their elements.
+    ///
+    /// Along the way, we prune any regions which we know for a fact will neven change.
+    ///
+    /// Note: Debug statements are commented, as each invokes an runtime check, and this loop gets a lot of work during simulation.
     pub fn insert(&mut self, observation: Observation<T>, now: T) -> Vec<Region<T>> {
         // info!("History Before: {:?}", self.list);
 

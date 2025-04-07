@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 #[derive(Debug, Copy, Clone)]
-pub struct Interval<T: PartialOrd>(pub T, pub T); // Generic Interval Type.
+pub struct Interval<T: PartialOrd>(pub T, pub T); /// Generic Interval Type.
 
 impl<T: PartialOrd> PartialEq for Interval<T> {
     fn eq(&self, _other: &Self) -> bool {
@@ -9,6 +9,8 @@ impl<T: PartialOrd> PartialEq for Interval<T> {
 }
 
 impl<T: PartialOrd> PartialOrd for Interval<T> {
+
+    /// Partial ord implementation for intervals of partially orderable types.
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         if self.1 < other.0 { // If a_{end} < b_{start}
             Some(Ordering::Less) // a < b

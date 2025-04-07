@@ -3,7 +3,7 @@ use nexosim::ports::Output;
 use nexosim::time::MonotonicTime;
 use chrono::TimeDelta;
 use serde::{Deserialize, Serialize};
-use crate::predicates::DefinitionPredicate;
+use crate::core::predicates::DefinitionPredicate;
 use crate::simulation::driver::TruthRecord;
 use crate::simulation::messages::{InterfaceQuery, PlatformQuery, UserAction};
 use crate::simulation::record::messages::{RecordQuery, RecordReply};

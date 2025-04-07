@@ -10,7 +10,7 @@ use nexosim::ports::Output;
 use nexosim::simulation::Mailbox;
 use serde::{Deserialize, Serialize};
 use tai_time::MonotonicTime;
-use crate::observations::Observation;
+use crate::core::observations::Observation;
 use crate::simulation::driver::TruthRecord;
 use crate::simulation::network::network_delay::{NetworkConnection, NetworkParameters};
 use crate::simulation::record::interface::{RecordInterface, RecordInterfaceParameters};

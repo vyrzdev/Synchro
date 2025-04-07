@@ -1,7 +1,7 @@
 use nexosim::model::{Context, Model};
 use nexosim::ports::Output;
+use crate::core::predicates::DefinitionPredicate;
 use crate::simulation::messages::{InterfaceQuery, PlatformQuery, UserAction};
-use crate::predicates::DefinitionPredicate;
 use crate::simulation::driver::TruthRecord;
 use crate::simulation::polling::r#unsafe::messages::{UnsafePollQuery, UnsafePollReply};
 use crate::value::Value;

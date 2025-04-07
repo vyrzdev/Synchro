@@ -3,7 +3,7 @@ use std::str::FromStr;
 use tokio::sync::mpsc::{Sender};
 use std::time::Duration;
 use chrono::{DateTime, Utc};
-use log::{error, warn};
+use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
 use squareup::api::{CatalogApi, InventoryApi};
 use squareup::config::{BaseUri, Configuration, Environment};
@@ -14,12 +14,12 @@ use squareup::models::enums::InventoryChangeType;
 use squareup::SquareClient;
 use tokio::time::sleep;
 use uuid::Uuid;
-use crate::intervals::Interval;
-use crate::observations::Observation;
-use crate::ordering::PlatformMetadata;
-use crate::predicates::DefinitionPredicate;
 use squareup::models::DateTime as SquareDateTime;
 use tokio::sync::watch;
+use crate::core::intervals::Interval;
+use crate::core::observations::Observation;
+use crate::core::ordering::PlatformMetadata;
+use crate::core::predicates::DefinitionPredicate;
 use crate::real_world::square::{SquareMetadata, Target, IGNORE};
 use crate::value::Value;
 
@@ -46,6 +46,14 @@ pub struct SquarePollingInterface {
 }
 
 impl SquarePollingInterface {
+    /// Creates a new `SquarePollingInterface`
+    ///
+    /// # Arguments
+    /// * `name` - Identifier for the polling interface.
+    /// * `config` - Configuration for polling, including token, backoff, target, and interpretation.
+    ///
+    /// # Returns
+    /// A fully initialized `SquarePollingInterface`.
     pub fn new(name: String, config: SquarePollingConfig) -> SquarePollingInterface {
         // Set Auth Token (in config)
         unsafe {
@@ -68,11 +76,28 @@ impl SquarePollingInterface {
 
         return SquarePollingInterface { name, catalog_api, inventory_api, config};
     }
+
+    /// Polling worker thread.
+    /// # Arguments
+    /// * `to_write` - A `watch::Receiver` instance that listens for new values to write to
+    ///    Square API.
+    /// * `observation_out` - An `mpsc::Sender` instance used to send `Observation`s,
+    ///    containing data about inventory changes
+    /// * `initial_poll` - A tuple containing the initial timestamp and value of the replica
+    ///
+    /// # Behavior
+    ///
+    /// - Polls the Square API for inventory values at regular intervals, specified by
+    ///   `config.backoff`.
+    /// - Compares the polled value to the last retrieved value:
+    ///   - If there is a change, generates an `Observation` which describes the change.
+    /// - Listens for changes to the `to_write` receiver channel:
+    ///   - If a value is detected, writes the value to Square's API and updates the state.
     pub async fn poll_worker(&mut self, mut to_write: watch::Receiver<Option<Value>>, observation_out: Sender<Observation<DateTime<Utc>>>, initial_poll: (DateTime<Utc>, Value)) -> ! {
         let (mut last_sent, mut last_value) = initial_poll;
 
         loop {
-            let (value, sent, replied) = self.request(self.config.target.clone()).await;
+            let (value, sent, replied) = self.request().await;
             if value != last_value {
                 // Generate Observation!
                 observation_out.send(Observation {
@@ -94,15 +119,33 @@ impl SquarePollingInterface {
                 // If some value waiting to write.
                 // Write it - NOTE: UNSAFE!
                 let sent_at = Utc::now();
-                let value = to_write.borrow().unwrap().clone();
-                self.write(value).await;
+                let to_value = to_write.borrow().unwrap().clone();
+
+                self.write(to_value).await;
+                (last_sent, last_value) = (sent_at, to_value);
+            } else {
+                (last_sent, last_value) = (sent, value);
             }
             // Schedule next poll.
             sleep(self.config.backoff).await;
         }
     }
 
-    pub async fn request(&self, target: Target) -> (Value, DateTime<Utc>, DateTime<Utc>) {
+    /// Processes the next polling request from the Square API.
+    ///
+    /// # Behavior
+    ///
+    /// - Issues a request to retrieve inventory count from the Square API
+    /// - If the request is successful:
+    ///   - Extracts the inventory counts for the `InStock` state.
+    ///   - Aggregates these counts into a single `Value` and records the timestamps when the request
+    ///     was sent and when the response was received.
+    ///   - Returns a tuple containing the aggregated `Value`, the sent timestamp, and the reply
+    ///     timestamp.
+    /// - If the request encounters an error:
+    ///   - Logs the error details.
+    ///   - Waits for 200ms and retries the request in a loop until success.
+    pub async fn request(&self) -> (Value, DateTime<Utc>, DateTime<Utc>) {
         let params = RetrieveInventoryCountParams {
             location_ids: Some(vec![self.config.target.0.clone()]),
             cursor: None
@@ -130,6 +173,21 @@ impl SquarePollingInterface {
         }
     }
 
+
+    /// Writes the provided value to Square API.
+    ///
+    /// # Arguments
+    /// * `value` - A `Value` representing the new inventory state to be written.
+    ///
+    /// # Behavior
+    ///
+    /// - Constructs a `BatchChangeInventoryRequest` to update the inventory count in Square's API.
+    /// - Attempts to send the constructed request to the Square API:
+    ///   - If the request is successful:
+    ///     - Logs the success and returns immediately.
+    ///   - If the request encounters an error:
+    ///     - Logs the error details.
+    ///     - Waits for 200ms and retries the request in a loop until success.
     pub async fn write(&mut self, value: Value) {
         let params = BatchChangeInventoryRequest {
             idempotency_key: Uuid::new_v4().to_string(),
@@ -164,6 +222,7 @@ impl SquarePollingInterface {
         loop {
             match self.inventory_api.batch_change_inventory(&params).await {
                 Ok(_) => {
+                    info!("{} - Wrote Value: {}!", self.name, value);
                     return;
                 },
                 Err(e) => {

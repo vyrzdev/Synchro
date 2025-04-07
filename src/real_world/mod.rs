@@ -14,6 +14,17 @@ pub mod interpreter;
 pub mod config;
 
 
+/// Entry point for real-world operation
+///
+/// ### Parameters:
+/// - `cfg`: Configuration containing the initial value and platform setups.
+///
+/// ### Functionality:
+/// - Sets up channels for communication between components.
+/// - Initializes and manages threads for each platform based on their type (Polling or Records).
+/// - Starts the interpreter to process observations and calculate results.
+///
+/// This function runs all components forevermore.
 pub async fn real_world_main(cfg: RealWorldConfig) {
     // Initialise interpreter channels
     let (interpreter_tx, mut interpreter_rx) = channel(10);
@@ -28,21 +39,25 @@ pub async fn real_world_main(cfg: RealWorldConfig) {
         info!("Discovered {}!", name);
         match platform_cfg {
             PlatformConfig::Polling(square_cfg) => {
+                // initialise interface- apply initial value.
                 let mut new_interface = SquarePollingInterface::new(name, square_cfg);
                 new_interface.write(cfg.initial_value.clone()).await;
 
+                // clone values for move into thread
                 let local_rx = value_rx.clone();
                 let local_tx = interpreter_tx.clone();
                 let local_initial_value = cfg.initial_value.clone();
 
                 polling_futures.spawn((async move || { // Move local copies into future.
-                    new_interface.poll_worker(local_rx, local_tx, (Utc::now(), 0)).await;
+                    new_interface.poll_worker(local_rx, local_tx, (Utc::now(), local_initial_value)).await;
                 })());
             },
             PlatformConfig::Records(square_cfg) => {
+                // initialise interface- apply initial value.
                 let mut new_interface = SquareRecordInterface::new(name, square_cfg).await;
-                // TODO: Offset Worker.
                 new_interface.write(cfg.initial_value.clone()).await;
+
+                // clone values for move into thread
                 let local_rx = value_rx.clone();
                 let local_tx = interpreter_tx.clone();
 
@@ -54,10 +69,9 @@ pub async fn real_world_main(cfg: RealWorldConfig) {
     }
 
     info!("Initialising Interpreter");
-    // Initialise interpreter
     let interpreter_future = interpreter_worker(interpreter_rx, cfg.initial_value, value_tx);
 
     info!("Starting!");
-    // Join all threads - run until termination.
+    // Join all threads - runs forevermore.
     join!(polling_futures.join_all(), interpreter_future).await;
 }

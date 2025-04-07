@@ -1,8 +1,8 @@
 use std::error::Error;
 use nexosim::simulation::ExecutionError;
 use tai_time::MonotonicTime;
-use crate::interpreter::error::ConflictError;
-use crate::interpreter::history::History;
+use crate::core::interpreter::error::ConflictError;
+use crate::core::interpreter::history::History;
 use crate::simulation::driver::TruthRecord;
 
 #[derive(Debug)]

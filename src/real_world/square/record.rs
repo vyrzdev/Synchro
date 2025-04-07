@@ -18,10 +18,10 @@ use tokio::sync::mpsc::Sender;
 use tokio::sync::watch;
 use tokio::time::sleep;
 use uuid::Uuid;
-use crate::intervals::Interval;
-use crate::observations::Observation;
-use crate::ordering::PlatformMetadata;
-use crate::predicates::DefinitionPredicate;
+use crate::core::intervals::Interval;
+use crate::core::observations::Observation;
+use crate::core::ordering::PlatformMetadata;
+use crate::core::predicates::DefinitionPredicate;
 use crate::real_world::square::{SquareMetadata, Target, IGNORE};
 use crate::value::Value;
 
@@ -45,6 +45,18 @@ pub struct SquareRecordInterface {
 }
 
 impl SquareRecordInterface {
+    /// Initializes a new `SquareRecordInterface` instance.
+    ///
+    /// # Arguments
+    /// - `name`: A unique identifier for the interface instance.
+    /// - `config`: The configuration for the Square Record Interface, including authentication token
+    ///
+    /// # Returns
+    /// A fully initialized instance of `SquareRecordInterface` with configured APIs and deviation.
+    ///
+    /// # Notes
+    /// - This function performs five calibration requests to compute deviation tolerances.
+    /// - Backs off when API errors occur. (rate limiting)
     pub async fn new(name: String, config: SquareRecordConfig) -> SquareRecordInterface {
         // Set Auth Token (in config)
         unsafe {
@@ -65,6 +77,7 @@ impl SquareRecordInterface {
             base_uri: BaseUri::default(),
         }).unwrap());
 
+        // Perform deviation calibration
         let mut net_deviation_max = TimeDelta::MIN;
         let mut net_deviation_min = TimeDelta::MAX;
         for i in 0..5 {
@@ -107,6 +120,7 @@ impl SquareRecordInterface {
                 ignore_unchanged_counts: None,
             };
             loop {
+                // Loop until successful.
                 match inventory_api.batch_change_inventory(&request).await {
                     Ok(resp) => {
                         let replied: DateTime<Utc> = Utc::now();
@@ -138,6 +152,7 @@ impl SquareRecordInterface {
         return SquareRecordInterface { name, catalog_api, inventory_api, seen_change_ids:HashSet::new(), config, net_deviation_min, net_deviation_max };
     }
 
+    /// Requests events since `since`
     pub async fn request_events(&self, since: DateTime<Utc>) -> Vec<InventoryChange> {
         let mut request = BatchRetrieveInventoryChangesRequest {
             catalog_object_ids: Some(vec![self.config.target.1.clone()]),
@@ -160,6 +175,7 @@ impl SquareRecordInterface {
         }
     }
 
+    /// Parses a change and returns its unique ID + an observation if the change will generate one.
     pub fn parse_change(&self, change: InventoryChange) -> (String, Option<Observation<DateTime<Utc>>>) {
         match change.r#type.as_ref().unwrap() {
             InventoryChangeType::PhysicalCount => {
@@ -216,6 +232,21 @@ impl SquareRecordInterface {
         }
     }
 
+
+    /// Main worker for record-based observation- continuously fetches inventory changes from the last known time,
+    /// processes those changes to generate observations if applicable, and writes back data if there is
+    /// a pending value to be written.
+    ///
+    /// # Parameters:
+    /// - `to_write`: A `watch::Receiver` that receives `Value`s, which, if updated, will be written
+    /// - `observation_out`: An `async_channel::Sender` used to send newly generated observations.
+    ///
+    /// # Behavior:
+    /// - Periodically requests all inventory change events that occurred in a specific time frame.
+    /// - Parses each change to check if it results in an observation and prevents duplication
+    ///   using a `HashSet` of seen IDs.
+    /// - Sends new observations through the `observation_out` channel.
+    /// - If there is pending data to write (`to_write` has changed), does it.
     pub async fn record_worker(&mut self, mut to_write: watch::Receiver<Option<Value>>, observation_out: Sender<Observation<DateTime<Utc>>>) -> ! {
         let mut seen = HashSet::new();
         let mut last = Utc::now();
@@ -224,13 +255,15 @@ impl SquareRecordInterface {
             last = Utc::now();
             let results = events.await;
 
+            // For each observed change
             for change in results {
+                // Parse it.
                 let (id, observation) = self.parse_change(change);
                 if let Some(observation) = observation {
-                    if !seen.contains(&id) {
+                    if !seen.contains(&id) { // If some change and not seen before
                         info!("{} - Observed New: {:?}!", self.name, observation);
-                        observation_out.send(observation).await.unwrap();
-                        seen.insert(id);
+                        observation_out.send(observation).await.unwrap(); // send it
+                        seen.insert(id); // seen it now.
                     }
                 }
             }
@@ -248,6 +281,7 @@ impl SquareRecordInterface {
     }
 
 
+    /// Writes `value` to the API.
     pub async fn write(&mut self, value: Value) {
         let params = BatchChangeInventoryRequest {
             idempotency_key: Uuid::new_v4().to_string(),

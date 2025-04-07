@@ -1,7 +1,6 @@
 use std::cmp::Ordering;
-use crate::interpreter::merge::merge_procedure;
-use crate::observations::Observation;
-use crate::predicates::DefinitionPredicate;
+use crate::core::observations::Observation;
+use crate::core::predicates::DefinitionPredicate;
 use crate::value::Value;
 
 #[derive(Debug, Clone)]

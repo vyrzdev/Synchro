@@ -1,7 +1,7 @@
 use nexosim::ports::{EventBuffer, EventSlot};
 use nexosim::simulation::{Mailbox, SimInit, Simulation};
 use tai_time::MonotonicTime;
-use crate::interpreter::error::ConflictError;
+use crate::core::interpreter::error::ConflictError;
 use crate::simulation::config::{PlatformConfig, SimulationConfig};
 use crate::simulation::driver::TruthRecord;
 use crate::simulation::interpreter::interpreter::{Interpreter, InterpreterConfig};

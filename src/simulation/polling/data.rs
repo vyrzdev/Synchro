@@ -1,6 +1,7 @@
 use tai_time::MonotonicTime;
 use crate::value::Value;
-// Common datastructures between safe and unsafe polling.
+/// Common datastructures between safe and unsafe polling.
+
 
 #[derive(Debug)]
 pub struct SentPoll {

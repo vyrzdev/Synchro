@@ -1,7 +1,9 @@
-use crate::observations::Observation;
-use crate::predicates::DefinitionPredicate;
-use crate::predicates::DefinitionPredicate::Unknown;
+use crate::core::observations::Observation;
+use crate::core::predicates::DefinitionPredicate;
+use crate::core::predicates::DefinitionPredicate::Unknown;
 
+/// Our defined merge-procedure.
+/// TODO: INCOMPLETE- Implement efficient LastAssn.
 pub fn merge_procedure<T: PartialOrd + Clone>(observations: &Vec<Observation<T>>) -> DefinitionPredicate {
     let mut all_mutations = true;
     let mut sum = 0;

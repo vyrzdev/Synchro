@@ -3,10 +3,6 @@
     {
       "until": 100000,
       "initial_value": 100,
-      "max_divergence_before_error": {
-        "secs": 5,
-        "nanos": 0
-      },
       "platforms": {
         "Polling2": {
           "PollingSafe": {

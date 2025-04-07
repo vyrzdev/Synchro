@@ -1,6 +1,6 @@
 use std::time::Duration;
 use tai_time::MonotonicTime;
-use crate::interpreter::error::ConflictError;
+use crate::core::interpreter::error::ConflictError;
 use crate::simulation::error::DivergenceError;
 
 #[derive(Debug)]

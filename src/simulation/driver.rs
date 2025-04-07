@@ -2,14 +2,15 @@ use std::time::Duration;
 use log::{error, info, warn};
 use nexosim::ports::{EventBuffer, EventSlot};
 use tai_time::MonotonicTime;
-use crate::interpreter::history::History;
-use crate::predicates::DefinitionPredicate;
+use crate::core::interpreter::history::History;
+use crate::core::predicates::DefinitionPredicate;
 use crate::simulation::config::SimulationConfig;
 use crate::simulation::error::{DivergenceError, SimulationError};
 use crate::simulation::model::build_model;
 use crate::simulation::results::{SimulationResults, SimulationStatistics};
 pub type TruthRecord = (DefinitionPredicate, MonotonicTime);
 
+/// Executes an iteration of the simulation (builds model from config and runs it, returning error or average time to convergence.
 fn iteration(simulation_config: &SimulationConfig) -> Result<Option<Duration>, SimulationError> {
     let mut truth_sink = EventBuffer::new(); // Get true event records.
     let mut found_slot = EventSlot::new(); // Where calculated values go for comparison.
@@ -87,6 +88,8 @@ fn iteration(simulation_config: &SimulationConfig) -> Result<Option<Duration>, S
     }
 }
 
+/// Runs a given simulation for `iterations`
+/// Outputs statistics at the end.
 pub fn driver(
     simulation_config: SimulationConfig, // The simulation to run.
     iterations: u64, // Number of iterations.

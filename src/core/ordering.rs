@@ -1,12 +1,15 @@
 use std::cmp::Ordering;
-use crate::observations::Observation;
+use crate::core::observations::Observation;
 use crate::simulation::data::SimulationMetaData;
 use crate::real_world::square::SquareMetadata;
 
+/// Platform level-metadata for replica-local ordering
 #[derive(Clone, Debug)]
 pub enum PlatformMetadata {
-    Square(SquareMetadata), // Square Logical Ordering
-    Simulation(SimulationMetaData) // Simulation Logical Ordering
+    /// Square Logical Ordering
+    Square(SquareMetadata),
+    /// Simulation Logical Ordering
+    Simulation(SimulationMetaData)
 }
 
 impl PartialEq<Self> for PlatformMetadata {
@@ -16,6 +19,8 @@ impl PartialEq<Self> for PlatformMetadata {
 }
 
 impl PartialOrd for PlatformMetadata {
+    /// Partial Comparison using platform-level metadata.
+    /// If from different platforms... do not order.
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         match (self, other) {
             // When platforms are both square, defer to square ordering.
@@ -41,6 +46,7 @@ impl<T: PartialOrd + Clone> PartialEq for Observation<T> {
 }
 
 impl<T: PartialOrd + Clone> PartialOrd for Observation<T> {
+    /// Partial order for observations (interval, and then if still unknown check platform.)
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         match self.interval.partial_cmp(&other.interval) {
             // If intervals overlap, but from same replica, check source logical ordering.

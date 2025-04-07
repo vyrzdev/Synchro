@@ -1,6 +1,6 @@
-use crate::observations::Observation;
+use crate::core::observations::Observation;
 
-// Typed conflict error - common between real and unsafe implementation.
+/// Typed conflict error - common between real and unsafe implementation.
 #[derive(Debug, Clone)]
 pub struct ConflictError<T: PartialOrd + Clone> {
     pub(crate) reason: String,

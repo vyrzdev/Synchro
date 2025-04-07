@@ -7,11 +7,13 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NetworkParameters {
-    pub(crate) size: f64, // Avg milliseconds one-way RTT.
-    pub(crate) scale: f64 // Scale of Pareto - Larger = less extremes.
+    /// Avg milliseconds one-way RTT.
+    pub(crate) size: f64,
+    /// Scale of Pareto - Larger = less extremes.
+    pub(crate) scale: f64,
 }
 
-
+/// Network Delay Model - Uses the Pareto Distribution
 pub struct NetworkConnection<MessageType1: Clone + Send + Sync + 'static, MessageType2:  Clone + Send + Sync + 'static> {
     pub output_1: Output<MessageType1>,
     pub output_2: Output<MessageType2>,
@@ -27,6 +29,7 @@ impl<MessageType1: Clone + Send + Sync + 'static, MessageType2: Clone + Send + S
         }
     }
 
+    /// When get input- schedule output for after network delay.
     pub fn input_1(&mut self, value: MessageType1, ctx: &mut Context<Self>) {
         // When get input- schedule output for after network delay.
         ctx.schedule_event(self.delay(), Self::send_1, value).unwrap();
@@ -40,8 +43,8 @@ impl<MessageType1: Clone + Send + Sync + 'static, MessageType2: Clone + Send + S
         self.output_2.send(value).await;
     }
 
+    /// When get input- schedule output for after network delay.
     pub fn input_2(&mut self, value: MessageType2, ctx: &mut Context<Self>) {
-        // When get input- schedule output for after network delay.
         ctx.schedule_event(self.delay(), Self::send_2, value).unwrap();
     }
 
